@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package zos.geometry;
+
+message Twist {
+  double linear = 1;
+  double angular = 2;
+}
