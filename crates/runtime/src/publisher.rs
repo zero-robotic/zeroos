@@ -6,6 +6,7 @@ use std::marker::PhantomData;
 use zos_msg::Message;
 
 use crate::codec;
+use crate::node::Node;
 use crate::qos::Qos;
 use crate::RuntimeError;
 
@@ -14,6 +15,25 @@ pub struct Publisher<T> {
     publisher: zenoh::pubsub::Publisher<'static>,
     topic: String,
     _marker: PhantomData<T>,
+}
+
+/// Builder for [`Publisher`] created from a [`Node`].
+pub struct PublisherBuilder<'a, T> {
+    node: &'a Node,
+    topic: String,
+    qos: Qos,
+    _marker: PhantomData<T>,
+}
+
+impl<'a, T> PublisherBuilder<'a, T> {
+    pub(crate) fn new(node: &'a Node, topic: String) -> Self {
+        Self {
+            node,
+            topic,
+            qos: Qos::default(),
+            _marker: PhantomData,
+        }
+    }
 }
 
 impl<T> Publisher<T>
@@ -68,5 +88,19 @@ where
 
     pub fn topic(&self) -> &str {
         &self.topic
+    }
+}
+
+impl<'a, T> PublisherBuilder<'a, T>
+where
+    T: Message,
+{
+    pub fn qos(mut self, qos: Qos) -> Self {
+        self.qos = qos;
+        self
+    }
+
+    pub async fn build(self) -> Result<Publisher<T>, RuntimeError> {
+        Publisher::new_with_qos(self.node.session().clone(), self.topic, self.qos).await
     }
 }

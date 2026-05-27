@@ -8,11 +8,11 @@
 use std::time::Duration;
 
 use zos_msg::Twist;
-use zos_runtime::{Node, RuntimeError};
+use zos_runtime::{Node, NodeOptions, RuntimeError};
 
 #[tokio::main]
 async fn main() -> Result<(), RuntimeError> {
-    let mut node = Node::open_default().await?;
+    let mut node = Node::new(NodeOptions::new()).await?;
 
     node.create_subscriber_builder::<Twist>("cmd_vel")
         .register(|msg| async move {

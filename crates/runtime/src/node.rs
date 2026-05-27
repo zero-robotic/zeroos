@@ -1,62 +1,121 @@
 // Copyright (c) 2026 ZeroOS Authors
 // SPDX-License-Identifier: Apache-2.0
 
-use std::marker::PhantomData;
+use std::time::Duration;
 
 use zos_msg::Message;
 
 use crate::executor::Executor;
-use crate::qos::Qos;
-use std::time::Duration;
-
-use crate::{Publisher, Runnable, RuntimeError, Subscriber, Timer};
+use crate::publisher::PublisherBuilder;
+use crate::service::ServiceBuilder;
+use crate::subscriber::SubscriberBuilder;
+use crate::timer::TimerBuilder;
+use crate::{Client, Runnable, RuntimeError, Subscriber, Timer};
 
 /// A ZeroOS node: owns the Zenoh [`Session`] and creates publishers/subscribers.
+///
+/// Topic/service names are resolved like ROS 2: relative names are prefixed with
+/// [`namespace`](Self::namespace) (default `/`); names starting with `/` are global.
 pub struct Node {
+    /// Node name (identity only; not prepended to topics).
     pub name: String,
+    /// Normalized namespace without leading `/`; empty means root `/`.
+    pub namespace: String,
     session: zenoh::Session,
     /// Runnable components (subscribers, timers, …) for the [`Executor`](crate::Executor) to drive.
     pub runnables: Vec<Box<dyn Runnable + Send>>,
 }
 
-/// Builder for [`Publisher`] created from a [`Node`].
-pub struct PublisherBuilder<'a, T> {
-    node: &'a Node,
-    topic: String,
-    qos: Qos,
-    _marker: PhantomData<T>,
+/// Normalize a ROS 2-style namespace (`/`, `/robot`, `robot` → internal form).
+pub fn normalize_namespace(namespace: &str) -> String {
+    let namespace = namespace.trim();
+    if namespace.is_empty() || namespace == "/" {
+        String::new()
+    } else {
+        namespace.trim_matches('/').to_owned()
+    }
 }
 
-/// Builder for [`Subscriber`] created from a [`Node`].
-pub struct SubscriberBuilder<'a, T> {
-    node: &'a mut Node,
-    topic: String,
-    qos: Qos,
-    _marker: PhantomData<T>,
+/// Resolve a topic/service name under `namespace` (ROS 2 rules).
+pub fn resolve_name(namespace: &str, name: &str) -> String {
+    let name = name.trim();
+    if name.starts_with('/') {
+        return name.trim_start_matches('/').to_owned();
+    }
+    let name = name.trim_start_matches('/');
+    let namespace = normalize_namespace(namespace);
+    if namespace.is_empty() {
+        name.to_owned()
+    } else if name.is_empty() {
+        namespace
+    } else {
+        format!("{namespace}/{name}")
+    }
+}
+
+/// Options for [`Node::new`] (ROS 2 node name, namespace, Zenoh config).
+#[derive(Debug, Clone)]
+pub struct NodeOptions {
+    /// Node name (identity only).
+    pub name: String,
+    /// ROS 2 namespace (default `/`).
+    pub namespace: String,
+    pub config: zenoh::Config,
+}
+
+impl Default for NodeOptions {
+    fn default() -> Self {
+        Self {
+            name: String::new(),
+            namespace: "/".to_owned(),
+            config: zenoh::Config::default(),
+        }
+    }
+}
+
+impl NodeOptions {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn name(mut self, name: impl Into<String>) -> Self {
+        self.name = name.into();
+        self
+    }
+
+    pub fn namespace(mut self, namespace: impl Into<String>) -> Self {
+        self.namespace = namespace.into();
+        self
+    }
+
+    pub fn config(mut self, config: zenoh::Config) -> Self {
+        self.config = config;
+        self
+    }
 }
 
 impl Node {
-    /// Open a node with the default Zenoh configuration.
-    pub async fn open_default() -> Result<Self, RuntimeError> {
-        Self::open(zenoh::Config::default()).await
-    }
-
-    /// Open a node with the given Zenoh configuration (unnamed).
-    pub async fn open(config: zenoh::Config) -> Result<Self, RuntimeError> {
-        Self::open_named("", config).await
-    }
-
-    /// Open a named node. Topics are prefixed with `name/` when `name` is non-empty.
-    pub async fn open_named(name: impl Into<String>, config: zenoh::Config) -> Result<Self, RuntimeError> {
-        let session = zenoh::open(config)
+    /// Create a node (name + namespace + Zenoh session).
+    pub async fn new(options: NodeOptions) -> Result<Self, RuntimeError> {
+        let session = zenoh::open(options.config)
             .await
             .map_err(|e| RuntimeError::from(e.to_string()))?;
 
         Ok(Self {
-            name: name.into(),
+            name: options.name,
+            namespace: normalize_namespace(&options.namespace),
             session,
             runnables: Vec::new(),
         })
+    }
+
+    /// Fully qualified namespace string (`/` when root).
+    pub fn fq_namespace(&self) -> String {
+        if self.namespace.is_empty() {
+            "/".to_owned()
+        } else {
+            format!("/{}", self.namespace)
+        }
     }
 
     /// Register a runnable component to be driven by an executor.
@@ -78,14 +137,9 @@ impl Node {
         &self.session
     }
 
-    /// Start building a publisher on `topic` (default QoS).
+    /// Start building a publisher on `topic` (resolved under [`namespace`](Self::namespace)).
     pub fn create_publisher<T: Message>(&self, topic: impl AsRef<str>) -> PublisherBuilder<'_, T> {
-        PublisherBuilder {
-            node: self,
-            topic: self.resolve_topic(topic.as_ref()),
-            qos: Qos::default(),
-            _marker: PhantomData,
-        }
+        PublisherBuilder::new(self, self.resolve_name(topic.as_ref()))
     }
 
     /// Create a subscriber with default QoS (does not register with the node).
@@ -107,13 +161,7 @@ impl Node {
         &mut self,
         topic: impl AsRef<str>,
     ) -> SubscriberBuilder<'_, T> {
-        let topic = self.resolve_topic(topic.as_ref());
-        SubscriberBuilder {
-            node: self,
-            topic,
-            qos: Qos::default(),
-            _marker: PhantomData,
-        }
+        SubscriberBuilder::new(self, self.resolve_name(topic.as_ref()))
     }
 
     /// Create a periodic timer (does not register with the node).
@@ -127,114 +175,66 @@ impl Node {
 
     /// Start building a timer (`period` between ticks; default: periodic).
     pub fn create_timer_builder(&mut self, period: Duration) -> TimerBuilder<'_> {
-        TimerBuilder {
-            node: self,
-            period,
-            one_shot: false,
-        }
+        TimerBuilder::new(self, period)
     }
 
-    fn resolve_topic(&self, topic: &str) -> String {
-        let topic = topic.trim_start_matches('/');
-        if self.name.is_empty() {
-            topic.to_owned()
-        } else {
-            format!("{}/{}", self.name, topic)
-        }
+    /// Create a service client; `name` is relative to namespace or absolute if it starts with `/`.
+    pub async fn create_client<Req, Resp>(
+        &self,
+        name: impl AsRef<str>,
+    ) -> Result<Client<Req, Resp>, RuntimeError>
+    where
+        Req: Message,
+        Resp: Message,
+    {
+        Client::new(self.session.clone(), self.resolve_name(name.as_ref())).await
+    }
+
+    /// Start building a service on `name`; resolved like other endpoints.
+    pub fn create_service_builder<Req, Resp>(
+        &mut self,
+        name: impl AsRef<str>,
+    ) -> ServiceBuilder<'_, Req, Resp> {
+        ServiceBuilder::new(self, self.resolve_name(name.as_ref()))
+    }
+
+    pub(crate) fn resolve_name(&self, name: &str) -> String {
+        resolve_name(&self.namespace, name)
     }
 }
 
-impl<'a, T> PublisherBuilder<'a, T>
-where
-    T: Message,
-{
-    pub fn qos(mut self, qos: Qos) -> Self {
-        self.qos = qos;
-        self
+#[cfg(test)]
+mod tests {
+    use super::{normalize_namespace, resolve_name};
+
+    #[test]
+    fn normalize_namespace_root() {
+        assert_eq!(normalize_namespace(""), "");
+        assert_eq!(normalize_namespace("/"), "");
+        assert_eq!(normalize_namespace("  /  "), "");
     }
 
-    pub async fn build(self) -> Result<Publisher<T>, RuntimeError> {
-        Publisher::new_with_qos(self.node.session.clone(), self.topic, self.qos).await
-    }
-}
-
-impl<'a, T> SubscriberBuilder<'a, T>
-where
-    T: Message,
-{
-    pub fn qos(mut self, qos: Qos) -> Self {
-        self.qos = qos;
-        self
+    #[test]
+    fn normalize_namespace_nested() {
+        assert_eq!(normalize_namespace("/robot"), "robot");
+        assert_eq!(normalize_namespace("robot/arm"), "robot/arm");
     }
 
-    /// Build a subscriber without registering it on the node.
-    pub fn callback<F, Fut>(self, callback: F) -> Subscriber<T>
-    where
-        F: Fn(T) -> Fut + Send + Sync + 'static,
-        Fut: std::future::Future<Output = ()> + Send + 'static,
-    {
-        Subscriber::new_with_qos(
-            self.node.session.clone(),
-            self.topic,
-            self.qos,
-            callback,
-        )
+    #[test]
+    fn resolve_relative_in_root() {
+        assert_eq!(resolve_name("/", "cmd_vel"), "cmd_vel");
+        assert_eq!(resolve_name("", "scale"), "scale");
     }
 
-    /// Build a subscriber and append it to [`Node::runnables`] for the executor.
-    pub fn register<F, Fut>(self, callback: F)
-    where
-        F: Fn(T) -> Fut + Send + Sync + 'static,
-        Fut: std::future::Future<Output = ()> + Send + 'static,
-    {
-        let subscriber = Subscriber::new_with_qos(
-            self.node.session.clone(),
-            self.topic,
-            self.qos,
-            callback,
-        );
-        self.node.runnables.push(Box::new(subscriber));
-    }
-}
-
-/// Builder for [`Timer`] created from a [`Node`].
-pub struct TimerBuilder<'a> {
-    node: &'a mut Node,
-    period: Duration,
-    one_shot: bool,
-}
-
-impl<'a> TimerBuilder<'a> {
-    /// Fire once after `period`, then stop.
-    pub fn one_shot(mut self) -> Self {
-        self.one_shot = true;
-        self
+    #[test]
+    fn resolve_relative_in_namespace() {
+        assert_eq!(resolve_name("/demo", "scale"), "demo/scale");
+        assert_eq!(resolve_name("demo", "scale"), "demo/scale");
     }
 
-    /// Build a timer without registering it on the node.
-    pub fn callback<F, Fut>(self, callback: F) -> Timer
-    where
-        F: Fn() -> Fut + Send + Sync + 'static,
-        Fut: std::future::Future<Output = ()> + Send + 'static,
-    {
-        if self.one_shot {
-            Timer::one_shot(self.period, callback)
-        } else {
-            Timer::periodic(self.period, callback)
-        }
-    }
-
-    /// Build a timer and append it to [`Node::runnables`] for the executor.
-    pub fn register<F, Fut>(self, callback: F)
-    where
-        F: Fn() -> Fut + Send + Sync + 'static,
-        Fut: std::future::Future<Output = ()> + Send + 'static,
-    {
-        let timer = if self.one_shot {
-            Timer::one_shot(self.period, callback)
-        } else {
-            Timer::periodic(self.period, callback)
-        };
-        self.node.runnables.push(Box::new(timer));
+    #[test]
+    fn resolve_absolute_ignores_namespace() {
+        assert_eq!(resolve_name("/demo", "/scale"), "scale");
+        assert_eq!(resolve_name("robot", "/demo/scale"), "demo/scale");
     }
 }
