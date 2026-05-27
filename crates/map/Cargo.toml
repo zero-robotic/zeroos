@@ -1,0 +1,9 @@
+[package]
+name = "zos-map"
+description = "Grid maps and occupancy representations for ZeroOS"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+zos-msg = { workspace = true }

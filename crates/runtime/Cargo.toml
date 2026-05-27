@@ -1,0 +1,10 @@
+[package]
+name = "zos-runtime"
+description = "ZeroOS runtime: Node, Publisher, Subscriber, Service, and related middleware"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+zenoh = { workspace = true }
+zos-msg = { workspace = true }
