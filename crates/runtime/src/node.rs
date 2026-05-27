@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use zos_msg::Message;
 
-use crate::executor::Executor;
+use crate::executor::{Executor, ExecutorOptions};
 use crate::publisher::PublisherBuilder;
 use crate::service::ServiceBuilder;
 use crate::subscriber::SubscriberBuilder;
@@ -21,6 +21,7 @@ pub struct Node {
     pub name: String,
     /// Normalized namespace without leading `/`; empty means root `/`.
     pub namespace: String,
+    executor_options: ExecutorOptions,
     session: zenoh::Session,
     /// Runnable components (subscribers, timers, …) for the [`Executor`](crate::Executor) to drive.
     pub runnables: Vec<Box<dyn Runnable + Send>>,
@@ -61,6 +62,7 @@ pub struct NodeOptions {
     /// ROS 2 namespace (default `/`).
     pub namespace: String,
     pub config: zenoh::Config,
+    pub executor: ExecutorOptions,
 }
 
 impl Default for NodeOptions {
@@ -69,6 +71,7 @@ impl Default for NodeOptions {
             name: String::new(),
             namespace: "/".to_owned(),
             config: zenoh::Config::default(),
+            executor: ExecutorOptions::default(),
         }
     }
 }
@@ -92,6 +95,16 @@ impl NodeOptions {
         self.config = config;
         self
     }
+
+    pub fn executor(mut self, executor: ExecutorOptions) -> Self {
+        self.executor = executor;
+        self
+    }
+
+    pub fn executor_worker_threads(mut self, n: usize) -> Self {
+        self.executor.worker_threads = Some(n);
+        self
+    }
 }
 
 impl Node {
@@ -104,6 +117,7 @@ impl Node {
         Ok(Self {
             name: options.name,
             namespace: normalize_namespace(&options.namespace),
+            executor_options: options.executor,
             session,
             runnables: Vec::new(),
         })
@@ -123,11 +137,9 @@ impl Node {
         self.runnables.push(runnable);
     }
 
-    /// Take registered runnables and run them concurrently until completion or error.
-    ///
-    /// Requires a Tokio runtime (e.g. `#[tokio::main]`).
+    /// Run registered runnables (executor settings from [`NodeOptions::executor`] at creation).
     pub async fn spin(&mut self) -> Result<(), RuntimeError> {
-        let mut executor = Executor::new();
+        let mut executor = Executor::new(self.executor_options.clone());
         executor.add_node(self);
         executor.spin().await
     }

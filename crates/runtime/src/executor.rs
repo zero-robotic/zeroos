@@ -3,15 +3,36 @@
 
 use crate::{Node, Runnable, RuntimeError};
 
-/// Drives registered [`Runnable`] components (e.g. subscribers) concurrently on a Tokio runtime.
+/// Executor configuration (passed to [`Executor::new`]).
+#[derive(Debug, Clone, Default)]
+pub struct ExecutorOptions {
+    /// `None`: run on the current Tokio runtime ([`Executor::spin`].await inside `#[tokio::main]`).
+    /// `Some(n)`: create a dedicated runtime with `n` worker threads.
+    pub worker_threads: Option<usize>,
+}
+
+impl ExecutorOptions {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn worker_threads(mut self, n: usize) -> Self {
+        self.worker_threads = Some(n);
+        self
+    }
+}
+
+/// Drives registered [`Runnable`] components concurrently on a Tokio runtime.
 pub struct Executor {
     runnables: Vec<Box<dyn Runnable + Send>>,
+    options: ExecutorOptions,
 }
 
 impl Executor {
-    pub fn new() -> Self {
+    pub fn new(options: ExecutorOptions) -> Self {
         Self {
             runnables: Vec::new(),
+            options,
         }
     }
 
@@ -32,24 +53,58 @@ impl Executor {
         self.runnables.append(&mut std::mem::take(&mut node.runnables));
     }
 
-    /// Spawn one task per runnable and wait until all complete or one returns an error.
+    /// Run all runnables using [`ExecutorOptions`] from construction.
     ///
-    /// Requires a Tokio runtime (e.g. `#[tokio::main]`).
+    /// - `worker_threads: None` — spawn on the current runtime (`#[tokio::main(worker_threads = N)]`).
+    /// - `worker_threads: Some(n)` — dedicated `n`-thread pool (blocking thread hosts the runtime).
     pub async fn spin(self) -> Result<(), RuntimeError> {
-        if self.runnables.is_empty() {
+        match self.options.worker_threads {
+            None => {
+                Self::spawn_and_wait(tokio::runtime::Handle::current(), self.runnables).await
+            }
+            Some(workers) => {
+                let runnables = self.runnables;
+                tokio::task::spawn_blocking(move || Self::run_on_dedicated(runnables, workers))
+                    .await
+                    .map_err(|e| RuntimeError::from(format!("executor task join failed: {e}")))?
+            }
+        }
+    }
+
+    fn run_on_dedicated(
+        runnables: Vec<Box<dyn Runnable + Send>>,
+        workers: usize,
+    ) -> Result<(), RuntimeError> {
+        let workers = workers.max(1);
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(workers)
+            .enable_all()
+            .build()
+            .map_err(|e| RuntimeError::from(e.to_string()))?;
+
+        runtime.block_on(Self::spawn_and_wait(runtime.handle().clone(), runnables))
+    }
+
+    async fn spawn_and_wait(
+        handle: tokio::runtime::Handle,
+        runnables: Vec<Box<dyn Runnable + Send>>,
+    ) -> Result<(), RuntimeError> {
+        if runnables.is_empty() {
             return Ok(());
         }
 
-        let mut handles = Vec::with_capacity(self.runnables.len());
-        for mut runnable in self.runnables {
-            handles.push(tokio::spawn(async move { runnable.run().await }));
+        let mut handles = Vec::with_capacity(runnables.len());
+        for mut runnable in runnables {
+            handles.push(handle.spawn(async move { runnable.run().await }));
         }
 
-        for handle in handles {
-            match handle.await {
+        for join in handles {
+            match join.await {
                 Ok(Ok(())) => {}
                 Ok(Err(e)) => return Err(e),
-                Err(e) => return Err(RuntimeError::from(format!("executor task panicked: {e}"))),
+                Err(e) => {
+                    return Err(RuntimeError::from(format!("executor task panicked: {e}")));
+                }
             }
         }
 
@@ -57,8 +112,16 @@ impl Executor {
     }
 }
 
+/// Default worker count when using a dedicated pool with `worker_threads(0)` is not used;
+/// prefer explicit `ExecutorOptions::worker_threads(n)`.
+pub fn default_worker_threads() -> usize {
+    std::thread::available_parallelism()
+        .map(|n| n.get())
+        .unwrap_or(1)
+}
+
 impl Default for Executor {
     fn default() -> Self {
-        Self::new()
+        Self::new(ExecutorOptions::default())
     }
 }

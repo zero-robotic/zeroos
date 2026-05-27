@@ -14,6 +14,7 @@ ZeroOS runtime 示例：演示 `Node`、发布/订阅、定时器、Service 与 
 |------|------|
 | [`pub_sub`](pub_sub.rs) | 在 `cmd_vel` 上发布/订阅 protobuf `Twist` 消息 |
 | [`timer`](timer.rs) | 500ms 周期定时器，经 `Node::spin` 由 Executor 驱动 |
+| [`executor`](executor.rs) | `ExecutorOptions` 默认池 vs 专用线程池；`NodeOptions` 与 `Executor::new` 两种构造 |
 | [`service`](service.rs) | [`Service`] 服务端：`Twist` → `Vector2`，等待请求 |
 | [`client`](client.rs) | [`Client`] 调用 `demo/scale`；默认自带进程内服务端 |
 
@@ -24,6 +25,9 @@ ZeroOS runtime 示例：演示 `Node`、发布/订阅、定时器、Service 与 
 ```bash
 cargo run -p zos-runtime --example pub_sub
 cargo run -p zos-runtime --example timer
+cargo run -p zos-runtime --example executor
+cargo run -p zos-runtime --example executor -- --dedicated
+cargo run -p zos-runtime --example executor -- --direct --dedicated
 cargo run -p zos-runtime --example service
 cargo run -p zos-runtime --example client
 ```
@@ -48,6 +52,7 @@ cargo build -p zos-runtime --examples
 
 - `pub_sub` 在同一进程内同时创建 Publisher 与 Subscriber，Subscriber 由 `node.spin()` 并发驱动。
 - `timer` 仅演示定时器 + Executor；不依赖 Zenoh 话题。
+- `executor` 演示 `ExecutorOptions` 的两种线程模型，以及经 `NodeOptions::executor` 与直接 `Executor::new` 构造；加 `--dedicated` / `--direct` 切换。
 - `service` 在 namespace `/demo` 上注册 `scale`（全名 `/demo/scale`）；需另开终端运行 `client -- --remote`。
 - `client` 用绝对名 `create_client("/demo/scale")` 调用（与 ROS 2 一致，不受 caller 的 namespace 影响）；默认模式在进程内启动同 namespace 的服务端。
 - MuJoCo / Unitree Go2 仿真见 [`../simulation/README.md`](../simulation/README.md)（Python，与本目录 Rust 示例分开）。

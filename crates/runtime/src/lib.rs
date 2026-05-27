@@ -19,7 +19,7 @@ pub mod timer;
 
 pub use codec::{decode, encode};
 pub use error::RuntimeError;
-pub use executor::Executor;
+pub use executor::{default_worker_threads, Executor, ExecutorOptions};
 pub use client::Client;
 pub use node::{normalize_namespace, resolve_name, Node, NodeOptions};
 pub use publisher::{Publisher, PublisherBuilder};
