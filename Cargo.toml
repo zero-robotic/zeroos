@@ -1,0 +1,26 @@
+[workspace]
+members = [
+    "crates/runtime",
+    "crates/msg",
+    "crates/map",
+    "crates/zos",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+
+[workspace.dependencies]
+async-trait = "0.1"
+futures-util = "0.3"
+prost = "0.13"
+prost-build = "0.13"
+thiserror = "2"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
+zenoh = "1.9.0"
+
+zos-runtime = { path = "crates/runtime" }
+zos-msg = { path = "crates/msg" }
+zos-map = { path = "crates/map" }

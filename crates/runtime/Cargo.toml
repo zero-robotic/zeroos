@@ -1,0 +1,15 @@
+[package]
+name = "zos-runtime"
+description = "ZeroOS runtime: Node, Publisher, Subscriber, Service, and related middleware"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+async-trait = { workspace = true }
+futures-util = { workspace = true }
+prost = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+zenoh = { workspace = true }
+zos-msg = { workspace = true }

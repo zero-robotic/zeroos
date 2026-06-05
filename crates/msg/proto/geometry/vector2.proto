@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package zos.geometry;
+
+message Vector2 {
+  double x = 1;
+  double y = 2;
+}

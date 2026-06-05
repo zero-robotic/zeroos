@@ -1,0 +1,11 @@
+[package]
+name = "zos"
+description = "ZeroOS facade: unified entry point for runtime, messages, and maps"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+zos-runtime = { workspace = true }
+zos-msg = { workspace = true }
+zos-map = { workspace = true }

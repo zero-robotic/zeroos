@@ -1,0 +1,36 @@
+# Copyright (c) 2026 ZeroOS Authors
+# SPDX-License-Identifier: Apache-2.0
+
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: test and examples
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: install protoc
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: cargo test
+        run: cargo test --workspace
+
+      - name: build examples
+        run: cargo build -p zos-runtime --examples
+
+      # `client` exits after five RPCs; other examples block in spin() and are compile-only above.
+      - name: run client example (smoke)
+        run: timeout 120 cargo run -p zos-runtime --example client
