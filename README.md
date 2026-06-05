@@ -41,24 +41,10 @@
 cargo build
 ```
 
-## CI
-
-Push 与 Pull Request 会运行 [GitHub Actions](.github/workflows/ci.yml)：`cargo test --workspace`、编译全部 runtime 示例，并 smoke 运行 `client` 示例。
-
-**PR 合并前须 CI 通过**：在 GitHub 仓库 **Settings → Branches → Branch protection rules** 中为目标分支（如 `main`）启用 **Require status checks to pass**，并勾选 **`test and examples`**（或 `CI / test and examples`）。
-
 ## 依赖（应用）
 
 ```toml
 zos = { path = "crates/zos" }
-```
-
-## Git hooks（可选）
-
-去掉 Cursor 自动写入的 `Co-authored-by` 行：
-
-```bash
-git config core.hooksPath .githooks
 ```
 
 ## 许可证
