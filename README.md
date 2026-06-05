@@ -30,6 +30,7 @@
 ## 环境要求
 
 - Rust toolchain（edition 2024）
+- **protoc**（编译 `zos-msg` 的 `.proto`）：macOS `brew install protobuf`，Debian/Ubuntu `sudo apt-get install protobuf-compiler`
 - 仿真：Python + MuJoCo，见 [`crates/simulation/README.md`](crates/simulation/README.md)
 
 ## 构建
