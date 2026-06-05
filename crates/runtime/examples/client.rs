@@ -12,11 +12,11 @@
 use std::env;
 
 use zos_msg::{Twist, Vector2};
-use zos_runtime::{init, Executor, InitOptions, Node, NodeOptions, RuntimeError};
+use zos_runtime::{init, Executor, Node, NodeOptions, RuntimeError};
 
 #[tokio::main]
 async fn main() -> Result<(), RuntimeError> {
-    init(InitOptions::new()).await?;
+    init().await?;
     let remote = env::args().any(|a| a == "--remote");
 
     let server_task = if remote {

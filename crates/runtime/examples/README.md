@@ -6,7 +6,7 @@ ZeroOS runtime 示例：演示 `Node`、发布/订阅、定时器、Service 与 
 
 - 已安装 Rust toolchain
 - 本机可运行 Tokio（示例使用 `#[tokio::main]`）
-- 先 `init(InitOptions::new()).await?`（或 `InitOptions::from_file` / `from_json5`），再 `Node::new(...)`
+- 先 `init().await?`（自定义配置用 `init_from_file("zenoh.json5")`），再 `Node::new(...)`
 
 ## 示例列表
 

@@ -18,12 +18,12 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 进程内先调用一次 [`init`](src/context.rs) 打开全局 Zenoh session，再创建任意个 [`Node`](src/node.rs)（共享同一 session，类似 ROS 2 `rclcpp::init`）：
 
 ```rust
-use zos_runtime::{init, InitOptions, RuntimeError};
+use zos_runtime::{init, init_from_file, RuntimeError};
 
 #[tokio::main]
 async fn main() -> Result<(), RuntimeError> {
-    init(InitOptions::new()).await?;
-    // 或 init(InitOptions::from_file("zenoh.json5")?).await?;
+    init().await?;
+    // 或 init_from_file("zenoh.json5").await?;
     Ok(())
 }
 ```
@@ -32,11 +32,11 @@ async fn main() -> Result<(), RuntimeError> {
 
 ```rust
 use zos_msg::Twist;
-use zos_runtime::{init, Executor, InitOptions, Node, NodeOptions, RuntimeError};
+use zos_runtime::{init, Executor, Node, NodeOptions, RuntimeError};
 
 #[tokio::main]
 async fn main() -> Result<(), RuntimeError> {
-    init(InitOptions::new()).await?;
+    init().await?;
     let mut node = Node::new(NodeOptions::new());
 
     node.create_subscriber_builder::<Twist>("cmd_vel")
@@ -54,7 +54,7 @@ async fn main() -> Result<(), RuntimeError> {
 带 **namespace** 的节点（与 ROS 2 `__ns` 一致）：
 
 ```rust
-init(InitOptions::new()).await?;
+init().await?;
 let mut node = Node::new(
     NodeOptions::new()
         .name("server")
@@ -69,8 +69,8 @@ node.create_service_builder::<Req, Resp>("scale")
 
 | 类型 | ROS 2 对应 | 说明 |
 |------|------------|------|
-| [`init`](src/context.rs) | `rclcpp::init` | 全局 Zenoh session，每进程一次 |
-| [`InitOptions`](src/context.rs) | init 选项 | 默认 / `config` / `from_file` / `from_json5` / `from_env` |
+| [`init`](src/context.rs) | `rclcpp::init` | 默认配置，每进程一次 |
+| [`init_from_file`](src/context.rs) | 带配置 init | JSON5 配置文件路径 |
 | [`session`](src/context.rs) | — | 全局 session（[`init`](src/context.rs) 后按需 clone） |
 | [`Node`](src/node.rs) | `rclcpp::Node` | 创建端点、收集 runnable |
 | [`NodeOptions`](src/node.rs) | node 选项 | `name`、`namespace`（默认 `/`） |
@@ -100,7 +100,7 @@ node.create_service_builder::<Req, Resp>("scale")
 ```rust
 use zos_runtime::{Executor, ExecutorOptions};
 
-init(InitOptions::new()).await?;
+init().await?;
 let mut node = Node::new(NodeOptions::new());
 // ... register runnables on node ...
 
