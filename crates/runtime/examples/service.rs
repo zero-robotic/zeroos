@@ -30,7 +30,5 @@ async fn main() -> Result<(), RuntimeError> {
     println!("service ready on /demo/scale");
     println!("call from another terminal: cargo run -p zos-runtime --example client -- --remote");
     println!("spinning (Ctrl+C to stop)...");
-    let mut executor = Executor::default();
-    executor.add_node(&mut node);
-    executor.spin().await
+    Executor::spin_node(&mut node).await
 }

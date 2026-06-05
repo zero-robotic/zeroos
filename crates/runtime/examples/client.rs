@@ -33,9 +33,9 @@ async fn main() -> Result<(), RuntimeError> {
             })
             .expect("register service");
         Some(tokio::spawn(async move {
-            let mut executor = Executor::default();
-            executor.add_node(&mut server);
-            executor.spin().await.expect("service spin failed");
+            Executor::spin_node(&mut server)
+                .await
+                .expect("service spin failed");
         }))
     };
 

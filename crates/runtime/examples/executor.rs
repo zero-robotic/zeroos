@@ -34,10 +34,8 @@ async fn main() -> Result<(), RuntimeError> {
     let mut node = Node::new(NodeOptions::new());
     register_timer(&mut node);
 
-    let mut executor = Executor::new(executor_opts);
-    executor.add_node(&mut node);
-    println!("spinning via Executor::spin() (Ctrl+C to stop)...");
-    executor.spin().await
+    println!("spinning via Executor::spin_node_with (Ctrl+C to stop)...");
+    Executor::spin_node_with(&mut node, executor_opts).await
 }
 
 fn register_timer(node: &mut Node) {

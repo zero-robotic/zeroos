@@ -47,9 +47,7 @@ async fn main() -> Result<(), RuntimeError> {
     let publisher = node.create_publisher::<Twist>("cmd_vel").build().await?;
     publisher.publish(&Twist { linear: 1.0, angular: 0.0 }).await?;
 
-    let mut executor = Executor::default();
-    executor.add_node(&mut node);
-    executor.spin().await
+    Executor::spin_node(&mut node).await
 }
 ```
 
@@ -107,14 +105,10 @@ let mut node = Node::new(NodeOptions::new());
 // ... register runnables on node ...
 
 // 使用 #[tokio::main] 的线程池（默认）
-let mut executor = Executor::default();
-executor.add_node(&mut node);
-executor.spin().await?;
+Executor::spin_node(&mut node).await?;
 
 // 专用 n 线程池
-let mut executor = Executor::new(ExecutorOptions::new().worker_threads(2));
-executor.add_node(&mut node);
-executor.spin().await?;
+Executor::spin_node_with(&mut node, ExecutorOptions::new().worker_threads(2)).await?;
 ```
 
 | `ExecutorOptions::worker_threads` | 行为 |
@@ -122,7 +116,7 @@ executor.spin().await?;
 | `None` | 当前 Tokio runtime（由 `#[tokio::main(worker_threads = N)]` 决定） |
 | `Some(n)` | 独立 `n` worker 线程池 |
 
-一个 executor 可 `add_node` 多次，合并多个节点的 runnable 后 `spin().await`。
+多节点时手动组装：`Executor::new(opts)` → `add_node`（可多次）→ `spin().await`。
 
 ## 示例
 

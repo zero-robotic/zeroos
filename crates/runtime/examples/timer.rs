@@ -29,7 +29,5 @@ async fn main() -> Result<(), RuntimeError> {
         });
 
     println!("spinning (Ctrl+C to stop)...");
-    let mut executor = Executor::default();
-    executor.add_node(&mut node);
-    executor.spin().await
+    Executor::spin_node(&mut node).await
 }
