@@ -13,48 +13,67 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 
 应用代码需要 Tokio 运行时（`#[tokio::main]`）。
 
+## 初始化
+
+进程内先调用一次 [`init`](src/context.rs) 打开全局 Zenoh session，再创建任意个 [`Node`](src/node.rs)（共享同一 session，类似 ROS 2 `rclcpp::init`）：
+
+```rust
+use zos_runtime::{init, init_from_file, RuntimeError};
+
+#[tokio::main]
+async fn main() -> Result<(), RuntimeError> {
+    init().await?;
+    // 或 init_from_file("zenoh.json5").await?;
+    Ok(())
+}
+```
+
 ## 快速开始
 
 ```rust
 use zos_msg::Twist;
-use zos_runtime::{Node, NodeOptions, RuntimeError};
+use zos_runtime::{init, Executor, Node, NodeOptions, RuntimeError};
 
 #[tokio::main]
 async fn main() -> Result<(), RuntimeError> {
-    let mut node = Node::new(NodeOptions::new()).await?;
+    init().await?;
+    let mut node = Node::new(NodeOptions::new());
 
     node.create_subscriber_builder::<Twist>("cmd_vel")
         .register(|msg| async move {
             println!("linear = {}", msg.linear);
-        });
+        })?;
 
     let publisher = node.create_publisher::<Twist>("cmd_vel").build().await?;
     publisher.publish(&Twist { linear: 1.0, angular: 0.0 }).await?;
 
-    node.spin().await
+    Executor::spin_node(&mut node).await
 }
 ```
 
 带 **namespace** 的节点（与 ROS 2 `__ns` 一致）：
 
 ```rust
+init().await?;
 let mut node = Node::new(
     NodeOptions::new()
         .name("server")
         .namespace("/demo"),
-)
-.await?;
+);
 
 node.create_service_builder::<Req, Resp>("scale")
-    .register(|req| async move { Ok(resp) });
+    .register(|req| async move { Ok(resp) })?;
 ```
 
 ## 核心类型
 
 | 类型 | ROS 2 对应 | 说明 |
 |------|------------|------|
-| [`Node`](src/node.rs) | `rclcpp::Node` | Zenoh session、创建端点、`spin()` |
-| [`NodeOptions`](src/node.rs) | node 选项 | `name`、`namespace`（默认 `/`）、`config` |
+| [`init`](src/context.rs) | `rclcpp::init` | 默认配置，每进程一次 |
+| [`init_from_file`](src/context.rs) | 带配置 init | JSON5 配置文件路径 |
+| [`session`](src/context.rs) | — | 全局 session（[`init`](src/context.rs) 后按需 clone） |
+| [`Node`](src/node.rs) | `rclcpp::Node` | 创建端点、收集 runnable |
+| [`NodeOptions`](src/node.rs) | node 选项 | `name`、`namespace`（默认 `/`） |
 | [`Publisher`](src/publisher.rs) | `Publisher` | 话题发布 |
 | [`Subscriber`](src/subscriber.rs) | `Subscription` | 话题订阅，可注册进 executor |
 | [`Service`](src/service.rs) | `Service` | 请求/响应服务端 |
@@ -76,25 +95,28 @@ node.create_service_builder::<Req, Resp>("scale")
 
 ## Executor 与线程池
 
-在创建节点时通过 [`ExecutorOptions`](src/executor.rs) 配置，统一用 `node.spin().await`：
+注册 subscriber / timer / service 后，由 [`Executor`](src/executor.rs) 驱动：
 
 ```rust
+use zos_runtime::{Executor, ExecutorOptions};
+
+init().await?;
+let mut node = Node::new(NodeOptions::new());
+// ... register runnables on node ...
+
 // 使用 #[tokio::main] 的线程池（默认）
-Node::new(NodeOptions::new()).await?;
+Executor::spin_node(&mut node).await?;
 
 // 专用 n 线程池
-Node::new(
-    NodeOptions::new().executor(ExecutorOptions::new().worker_threads(2)),
-)
-.await?;
+Executor::spin_node_with(&mut node, ExecutorOptions::new().worker_threads(2)).await?;
 ```
 
-| `executor.worker_threads` | 行为 |
-|---------------------------|------|
+| `ExecutorOptions::worker_threads` | 行为 |
+|-----------------------------------|------|
 | `None` | 当前 Tokio runtime（由 `#[tokio::main(worker_threads = N)]` 决定） |
 | `Some(n)` | 独立 `n` worker 线程池 |
 
-手动组装时：`Executor::new(opts).add_node(&mut node).spin().await`（默认选项可用 `Executor::default()`）。
+多节点时手动组装：`Executor::new(opts)` → `add_node`（可多次）→ `spin().await`。
 
 ## 示例
 

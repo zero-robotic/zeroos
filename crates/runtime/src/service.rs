@@ -9,6 +9,7 @@ use async_trait::async_trait;
 use zos_msg::Message;
 
 use crate::codec;
+use crate::context;
 use crate::node::Node;
 use crate::{Runnable, RuntimeError};
 
@@ -46,20 +47,17 @@ where
     Req: Message,
     Resp: Message,
 {
-    pub fn new<F, Fut>(
-        session: zenoh::Session,
-        topic: impl Into<String>,
-        handler: F,
-    ) -> Self
+    pub fn new<F, Fut>(topic: impl Into<String>, handler: F) -> Result<Self, RuntimeError>
     where
         F: Fn(Req) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Result<Resp, RuntimeError>> + Send + 'static,
     {
-        Self {
+        let session = context::session()?;
+        Ok(Self {
             _session: session,
             topic: topic.into(),
             handler: std::sync::Arc::new(move |req| Box::pin(handler(req))),
-        }
+        })
     }
 
     pub fn topic(&self) -> &str {
@@ -73,22 +71,23 @@ where
     Resp: Message,
 {
     /// Build a service without registering it on the node.
-    pub fn handler<F, Fut>(self, handler: F) -> Service<Req, Resp>
+    pub fn handler<F, Fut>(self, handler: F) -> Result<Service<Req, Resp>, RuntimeError>
     where
         F: Fn(Req) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Result<Resp, RuntimeError>> + Send + 'static,
     {
-        Service::new(self.node.session().clone(), self.name, handler)
+        Service::new(self.name, handler)
     }
 
     /// Build a service and append it to [`Node::runnables`] for the executor.
-    pub fn register<F, Fut>(self, handler: F)
+    pub fn register<F, Fut>(self, handler: F) -> Result<(), RuntimeError>
     where
         F: Fn(Req) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Result<Resp, RuntimeError>> + Send + 'static,
     {
-        let service = Service::new(self.node.session().clone(), self.name, handler);
+        let service = Service::new(self.name, handler)?;
         self.node.add_runnable(Box::new(service));
+        Ok(())
     }
 }
 

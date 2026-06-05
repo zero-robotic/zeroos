@@ -6,6 +6,7 @@
 //! Planned: `Parameter`, `Logger`, `Lifecycle`.
 
 pub mod codec;
+pub mod context;
 pub mod error;
 pub mod executor;
 pub mod node;
@@ -21,6 +22,7 @@ pub use codec::{decode, encode};
 pub use error::RuntimeError;
 pub use executor::{default_worker_threads, Executor, ExecutorOptions};
 pub use client::Client;
+pub use context::{init, init_from_file, is_initialized, session};
 pub use node::{normalize_namespace, resolve_name, Node, NodeOptions};
 pub use publisher::{Publisher, PublisherBuilder};
 pub use service::{Service, ServiceBuilder};

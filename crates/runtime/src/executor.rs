@@ -53,6 +53,18 @@ impl Executor {
         self.runnables.append(&mut std::mem::take(&mut node.runnables));
     }
 
+    /// Drive all runnables on `node` with default [`ExecutorOptions`].
+    pub async fn spin_node(node: &mut Node) -> Result<(), RuntimeError> {
+        Self::spin_node_with(node, ExecutorOptions::default()).await
+    }
+
+    /// Drive all runnables on `node` with the given [`ExecutorOptions`].
+    pub async fn spin_node_with(node: &mut Node, options: ExecutorOptions) -> Result<(), RuntimeError> {
+        let mut executor = Self::new(options);
+        executor.add_node(node);
+        executor.spin().await
+    }
+
     /// Run all runnables using [`ExecutorOptions`] from construction.
     ///
     /// - `worker_threads: None` — spawn on the current runtime (`#[tokio::main(worker_threads = N)]`).

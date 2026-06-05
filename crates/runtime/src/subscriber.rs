@@ -10,6 +10,7 @@ use futures_util::StreamExt;
 use zos_msg::Message;
 
 use crate::codec;
+use crate::context;
 use crate::node::Node;
 use crate::qos::Qos;
 use crate::{Runnable, RuntimeError};
@@ -48,31 +49,30 @@ where
     T: Message,
 {
     /// Prefer [`Node::create_subscriber`](crate::Node::create_subscriber) in application code.
-    pub fn new<F, Fut>(session: zenoh::Session, topic: impl Into<String>, callback: F) -> Self
+    pub fn new<F, Fut>(topic: impl Into<String>, callback: F) -> Result<Self, RuntimeError>
     where
         F: Fn(T) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = ()> + Send + 'static,
     {
-        Self::new_with_qos(session, topic, Qos::default(), callback)
+        Self::new_with_qos(topic, Qos::default(), callback)
     }
 
-    /// Create a subscriber with an explicit QoS profile.
     pub fn new_with_qos<F, Fut>(
-        session: zenoh::Session,
         topic: impl Into<String>,
         qos: Qos,
         callback: F,
-    ) -> Self
+    ) -> Result<Self, RuntimeError>
     where
         F: Fn(T) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = ()> + Send + 'static,
     {
-        Self {
+        let session = context::session()?;
+        Ok(Self {
             session,
             topic: topic.into(),
             qos,
             callback: Box::new(move |msg| Box::pin(callback(msg))),
-        }
+        })
     }
 }
 
@@ -86,32 +86,23 @@ where
     }
 
     /// Build a subscriber without registering it on the node.
-    pub fn callback<F, Fut>(self, callback: F) -> Subscriber<T>
+    pub fn callback<F, Fut>(self, callback: F) -> Result<Subscriber<T>, RuntimeError>
     where
         F: Fn(T) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = ()> + Send + 'static,
     {
-        Subscriber::new_with_qos(
-            self.node.session().clone(),
-            self.topic,
-            self.qos,
-            callback,
-        )
+        Subscriber::new_with_qos(self.topic, self.qos, callback)
     }
 
     /// Build a subscriber and append it to [`Node::runnables`] for the executor.
-    pub fn register<F, Fut>(self, callback: F)
+    pub fn register<F, Fut>(self, callback: F) -> Result<(), RuntimeError>
     where
         F: Fn(T) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = ()> + Send + 'static,
     {
-        let subscriber = Subscriber::new_with_qos(
-            self.node.session().clone(),
-            self.topic,
-            self.qos,
-            callback,
-        );
+        let subscriber = Subscriber::new_with_qos(self.topic, self.qos, callback)?;
         self.node.add_runnable(Box::new(subscriber));
+        Ok(())
     }
 }
 
