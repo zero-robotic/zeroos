@@ -1,19 +1,19 @@
 # ZeroOS
 
-面向机器人的操作系统与软件栈（Rust），覆盖通信、建图、定位、导航、感知与智能体等能力。
+个人练习项目：用 Rust 摸索机器人软件栈（通信、建图、定位、导航、感知、Agent 等），**非生产可用**，接口与结构可能随时调整。
 
-**当前已实现**的主要是通信运行时（[`zos-runtime`](crates/runtime/)）；其余模块在规划中或仅占位。
+**当前有实质代码**的主要是通信运行时（[`zos-runtime`](crates/runtime/)）；其余目录多为占位或随手试验。
 
-## 规划模块
+## 练习方向（非承诺路线图）
 
-| 模块 | 状态 | 说明 |
+| 方向 | 状态 | 说明 |
 |------|------|------|
-| **Runtime**（中间件） | 已实现 | 进程间通信与节点模型，见 [`crates/runtime`](crates/runtime/) |
-| **建图（Mapping）** | 规划中 | [`zos-map`](crates/map/) |
-| **定位（Localization）** | 规划中 | 位姿估计与坐标系 |
-| **导航（Navigation）** | 规划中 | 路径规划与运动控制 |
-| **感知（Perception）** | 规划中 | 传感器与场景理解 |
-| **Agent** | 规划中 | 任务编排与决策 |
+| **Runtime**（中间件） | 在练 | 进程间通信与节点模型，见 [`crates/runtime`](crates/runtime/) |
+| **建图（Mapping）** | 占位 | [`zos-map`](crates/map/) |
+| **定位（Localization）** | 未开始 | 位姿估计与坐标系 |
+| **导航（Navigation）** | 未开始 | 路径规划与运动控制 |
+| **感知（Perception）** | 未开始 | 传感器与场景理解 |
+| **Agent** | 未开始 | 任务编排与决策 |
 | **仿真** | 脚手架 | [`crates/simulation`](crates/simulation/) |
 
 ## 仓库结构
