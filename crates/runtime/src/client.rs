@@ -7,6 +7,7 @@ use zenoh::query::QueryTarget;
 use zos_msg::Message;
 
 use crate::codec;
+use crate::context;
 use crate::RuntimeError;
 
 /// Client: sends service requests via Zenoh querier (ROS 2 `rclcpp::Client`).
@@ -22,7 +23,8 @@ where
     Req: Message,
     Resp: Message,
 {
-    pub async fn new(session: zenoh::Session, topic: impl Into<String>) -> Result<Self, RuntimeError> {
+    pub async fn new(topic: impl Into<String>) -> Result<Self, RuntimeError> {
+        let session = context::session()?;
         let topic = topic.into();
         let querier = session
             .declare_querier(topic.clone())

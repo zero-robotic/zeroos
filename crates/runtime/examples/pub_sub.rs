@@ -8,17 +8,17 @@
 use std::time::Duration;
 
 use zos_msg::Twist;
-use zos_runtime::{init, InitOptions, Node, NodeOptions, RuntimeError};
+use zos_runtime::{init, Executor, InitOptions, Node, NodeOptions, RuntimeError};
 
 #[tokio::main]
 async fn main() -> Result<(), RuntimeError> {
     init(InitOptions::new()).await?;
-    let mut node = Node::new(NodeOptions::new()).await?;
+    let mut node = Node::new(NodeOptions::new());
 
     node.create_subscriber_builder::<Twist>("cmd_vel")
         .register(|msg| async move {
             println!("recv cmd_vel: linear={:.2}, angular={:.2}", msg.linear, msg.angular);
-        });
+        })?;
 
     let publisher = node.create_publisher::<Twist>("cmd_vel").build().await?;
 
@@ -35,5 +35,7 @@ async fn main() -> Result<(), RuntimeError> {
     });
 
     println!("spinning (Ctrl+C to stop)...");
-    node.spin().await
+    let mut executor = Executor::default();
+    executor.add_node(&mut node);
+    executor.spin().await
 }

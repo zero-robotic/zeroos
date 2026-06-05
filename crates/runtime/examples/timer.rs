@@ -9,12 +9,12 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
-use zos_runtime::{init, InitOptions, Node, NodeOptions, RuntimeError};
+use zos_runtime::{init, Executor, InitOptions, Node, NodeOptions, RuntimeError};
 
 #[tokio::main]
 async fn main() -> Result<(), RuntimeError> {
     init(InitOptions::new()).await?;
-    let mut node = Node::new(NodeOptions::new()).await?;
+    let mut node = Node::new(NodeOptions::new());
 
     let tick = Arc::new(AtomicU64::new(0));
     node.create_timer_builder(Duration::from_millis(500))
@@ -29,5 +29,7 @@ async fn main() -> Result<(), RuntimeError> {
         });
 
     println!("spinning (Ctrl+C to stop)...");
-    node.spin().await
+    let mut executor = Executor::default();
+    executor.add_node(&mut node);
+    executor.spin().await
 }

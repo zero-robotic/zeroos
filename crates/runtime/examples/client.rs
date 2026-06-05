@@ -12,7 +12,7 @@
 use std::env;
 
 use zos_msg::{Twist, Vector2};
-use zos_runtime::{init, InitOptions, Node, NodeOptions, RuntimeError};
+use zos_runtime::{init, Executor, InitOptions, Node, NodeOptions, RuntimeError};
 
 #[tokio::main]
 async fn main() -> Result<(), RuntimeError> {
@@ -22,7 +22,7 @@ async fn main() -> Result<(), RuntimeError> {
     let server_task = if remote {
         None
     } else {
-        let mut server = Node::new(NodeOptions::new().name("server").namespace("/demo")).await?;
+        let mut server = Node::new(NodeOptions::new().name("server").namespace("/demo"));
         server
             .create_service_builder::<Twist, Vector2>("scale")
             .register(|req| async move {
@@ -30,9 +30,12 @@ async fn main() -> Result<(), RuntimeError> {
                     x: req.linear,
                     y: req.angular,
                 })
-            });
+            })
+            .expect("register service");
         Some(tokio::spawn(async move {
-            server.spin().await.expect("service spin failed");
+            let mut executor = Executor::default();
+            executor.add_node(&mut server);
+            executor.spin().await.expect("service spin failed");
         }))
     };
 
@@ -40,7 +43,7 @@ async fn main() -> Result<(), RuntimeError> {
         tokio::time::sleep(std::time::Duration::from_millis(200)).await;
     }
 
-    let client_node = Node::new(NodeOptions::new().name("caller")).await?;
+    let client_node = Node::new(NodeOptions::new().name("caller"));
     // Absolute name (ROS 2): ignores caller's root namespace → `/demo/scale`.
     let client = client_node
         .create_client::<Twist, Vector2>("/demo/scale")

@@ -5,25 +5,22 @@ use std::time::Duration;
 
 use zos_msg::Message;
 
-use crate::context;
-use crate::executor::{Executor, ExecutorOptions};
 use crate::publisher::PublisherBuilder;
 use crate::service::ServiceBuilder;
 use crate::subscriber::SubscriberBuilder;
 use crate::timer::TimerBuilder;
 use crate::{Client, Runnable, RuntimeError, Subscriber, Timer};
 
-/// A ZeroOS node: owns the Zenoh [`Session`] and creates publishers/subscribers.
+/// A ZeroOS node: creates publishers/subscribers and collects runnables for the executor.
 ///
 /// Topic/service names are resolved like ROS 2: relative names are prefixed with
 /// [`namespace`](Self::namespace) (default `/`); names starting with `/` are global.
+/// The global session from [`crate::init`] is fetched when endpoints are created.
 pub struct Node {
     /// Node name (identity only; not prepended to topics).
     pub name: String,
     /// Normalized namespace without leading `/`; empty means root `/`.
     pub namespace: String,
-    executor_options: ExecutorOptions,
-    session: zenoh::Session,
     /// Runnable components (subscribers, timers, …) for the [`Executor`](crate::Executor) to drive.
     pub runnables: Vec<Box<dyn Runnable + Send>>,
 }
@@ -55,14 +52,13 @@ pub fn resolve_name(namespace: &str, name: &str) -> String {
     }
 }
 
-/// Options for [`Node::new`] (node name, namespace, executor). Zenoh config is set via [`crate::init`].
+/// Options for [`Node::new`] (node name, namespace). Zenoh config is set via [`crate::init`].
 #[derive(Debug, Clone)]
 pub struct NodeOptions {
     /// Node name (identity only).
     pub name: String,
     /// ROS 2 namespace (default `/`).
     pub namespace: String,
-    pub executor: ExecutorOptions,
 }
 
 impl Default for NodeOptions {
@@ -70,7 +66,6 @@ impl Default for NodeOptions {
         Self {
             name: String::new(),
             namespace: "/".to_owned(),
-            executor: ExecutorOptions::default(),
         }
     }
 }
@@ -89,30 +84,16 @@ impl NodeOptions {
         self.namespace = namespace.into();
         self
     }
-
-    pub fn executor(mut self, executor: ExecutorOptions) -> Self {
-        self.executor = executor;
-        self
-    }
-
-    pub fn executor_worker_threads(mut self, n: usize) -> Self {
-        self.executor.worker_threads = Some(n);
-        self
-    }
 }
 
 impl Node {
-    /// Create a node using the global session from [`crate::init`].
-    pub async fn new(options: NodeOptions) -> Result<Self, RuntimeError> {
-        let session = context::session()?;
-
-        Ok(Self {
+    /// Create a node (requires [`crate::init`] before creating endpoints).
+    pub fn new(options: NodeOptions) -> Self {
+        Self {
             name: options.name,
             namespace: normalize_namespace(&options.namespace),
-            executor_options: options.executor,
-            session,
             runnables: Vec::new(),
-        })
+        }
     }
 
     /// Fully qualified namespace string (`/` when root).
@@ -124,26 +105,14 @@ impl Node {
         }
     }
 
-    /// Register a runnable component to be driven by an executor.
+    /// Register a runnable component to be driven by an [`Executor`](crate::Executor).
     pub fn add_runnable(&mut self, runnable: Box<dyn Runnable + Send>) {
         self.runnables.push(runnable);
     }
 
-    /// Run registered runnables (executor settings from [`NodeOptions::executor`] at creation).
-    pub async fn spin(&mut self) -> Result<(), RuntimeError> {
-        let mut executor = Executor::new(self.executor_options.clone());
-        executor.add_node(self);
-        executor.spin().await
-    }
-
-    /// Access the underlying Zenoh session (e.g. for advanced Zenoh APIs).
-    pub fn session(&self) -> &zenoh::Session {
-        &self.session
-    }
-
     /// Start building a publisher on `topic` (resolved under [`namespace`](Self::namespace)).
-    pub fn create_publisher<T: Message>(&self, topic: impl AsRef<str>) -> PublisherBuilder<'_, T> {
-        PublisherBuilder::new(self, self.resolve_name(topic.as_ref()))
+    pub fn create_publisher<T: Message>(&self, topic: impl AsRef<str>) -> PublisherBuilder<T> {
+        PublisherBuilder::new(self.resolve_name(topic.as_ref()))
     }
 
     /// Create a subscriber with default QoS (does not register with the node).
@@ -151,7 +120,7 @@ impl Node {
         &mut self,
         topic: impl AsRef<str>,
         callback: F,
-    ) -> Subscriber<T>
+    ) -> Result<Subscriber<T>, RuntimeError>
     where
         T: Message,
         F: Fn(T) -> Fut + Send + Sync + 'static,
@@ -191,7 +160,7 @@ impl Node {
         Req: Message,
         Resp: Message,
     {
-        Client::new(self.session.clone(), self.resolve_name(name.as_ref())).await
+        Client::new(self.resolve_name(name.as_ref())).await
     }
 
     /// Start building a service on `name`; resolved like other endpoints.

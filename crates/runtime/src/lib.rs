@@ -22,7 +22,7 @@ pub use codec::{decode, encode};
 pub use error::RuntimeError;
 pub use executor::{default_worker_threads, Executor, ExecutorOptions};
 pub use client::Client;
-pub use context::{init, is_initialized, InitOptions};
+pub use context::{init, is_initialized, session, InitOptions};
 pub use node::{normalize_namespace, resolve_name, Node, NodeOptions};
 pub use publisher::{Publisher, PublisherBuilder};
 pub use service::{Service, ServiceBuilder};

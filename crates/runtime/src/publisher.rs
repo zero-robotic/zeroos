@@ -6,7 +6,7 @@ use std::marker::PhantomData;
 use zos_msg::Message;
 
 use crate::codec;
-use crate::node::Node;
+use crate::context;
 use crate::qos::Qos;
 use crate::RuntimeError;
 
@@ -17,18 +17,16 @@ pub struct Publisher<T> {
     _marker: PhantomData<T>,
 }
 
-/// Builder for [`Publisher`] created from a [`Node`].
-pub struct PublisherBuilder<'a, T> {
-    node: &'a Node,
+/// Builder for [`Publisher`] created from a [`Node`](crate::Node).
+pub struct PublisherBuilder<T> {
     topic: String,
     qos: Qos,
     _marker: PhantomData<T>,
 }
 
-impl<'a, T> PublisherBuilder<'a, T> {
-    pub(crate) fn new(node: &'a Node, topic: String) -> Self {
+impl<T> PublisherBuilder<T> {
+    pub(crate) fn new(topic: String) -> Self {
         Self {
-            node,
             topic,
             qos: Qos::default(),
             _marker: PhantomData,
@@ -40,19 +38,13 @@ impl<T> Publisher<T>
 where
     T: Message,
 {
-    /// Construct a publisher for `topic` on the given Zenoh session.
-    ///
     /// Prefer [`Node::create_publisher`](crate::Node::create_publisher) in application code.
-    pub async fn new(session: zenoh::Session, topic: impl Into<String>) -> Result<Self, RuntimeError> {
-        Self::new_with_qos(session, topic, Qos::default()).await
+    pub async fn new(topic: impl Into<String>) -> Result<Self, RuntimeError> {
+        Self::new_with_qos(topic, Qos::default()).await
     }
 
-    /// Create a publisher with an explicit QoS profile.
-    pub async fn new_with_qos(
-        session: zenoh::Session,
-        topic: impl Into<String>,
-        qos: Qos,
-    ) -> Result<Self, RuntimeError> {
+    pub async fn new_with_qos(topic: impl Into<String>, qos: Qos) -> Result<Self, RuntimeError> {
+        let session = context::session()?;
         let topic = topic.into();
         let builder = session.declare_publisher(topic.clone());
         let publisher = qos
@@ -91,7 +83,7 @@ where
     }
 }
 
-impl<'a, T> PublisherBuilder<'a, T>
+impl<T> PublisherBuilder<T>
 where
     T: Message,
 {
@@ -101,6 +93,6 @@ where
     }
 
     pub async fn build(self) -> Result<Publisher<T>, RuntimeError> {
-        Publisher::new_with_qos(self.node.session().clone(), self.topic, self.qos).await
+        Publisher::new_with_qos(self.topic, self.qos).await
     }
 }
