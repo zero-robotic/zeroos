@@ -5,6 +5,7 @@ use std::time::Duration;
 
 use zos_msg::Message;
 
+use crate::context;
 use crate::executor::{Executor, ExecutorOptions};
 use crate::publisher::PublisherBuilder;
 use crate::service::ServiceBuilder;
@@ -54,14 +55,13 @@ pub fn resolve_name(namespace: &str, name: &str) -> String {
     }
 }
 
-/// Options for [`Node::new`] (ROS 2 node name, namespace, Zenoh config).
+/// Options for [`Node::new`] (node name, namespace, executor). Zenoh config is set via [`crate::init`].
 #[derive(Debug, Clone)]
 pub struct NodeOptions {
     /// Node name (identity only).
     pub name: String,
     /// ROS 2 namespace (default `/`).
     pub namespace: String,
-    pub config: zenoh::Config,
     pub executor: ExecutorOptions,
 }
 
@@ -70,7 +70,6 @@ impl Default for NodeOptions {
         Self {
             name: String::new(),
             namespace: "/".to_owned(),
-            config: zenoh::Config::default(),
             executor: ExecutorOptions::default(),
         }
     }
@@ -91,11 +90,6 @@ impl NodeOptions {
         self
     }
 
-    pub fn config(mut self, config: zenoh::Config) -> Self {
-        self.config = config;
-        self
-    }
-
     pub fn executor(mut self, executor: ExecutorOptions) -> Self {
         self.executor = executor;
         self
@@ -108,11 +102,9 @@ impl NodeOptions {
 }
 
 impl Node {
-    /// Create a node (name + namespace + Zenoh session).
+    /// Create a node using the global session from [`crate::init`].
     pub async fn new(options: NodeOptions) -> Result<Self, RuntimeError> {
-        let session = zenoh::open(options.config)
-            .await
-            .map_err(|e| RuntimeError::from(e.to_string()))?;
+        let session = context::session()?;
 
         Ok(Self {
             name: options.name,

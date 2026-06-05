@@ -6,7 +6,7 @@ ZeroOS runtime 示例：演示 `Node`、发布/订阅、定时器、Service 与 
 
 - 已安装 Rust toolchain
 - 本机可运行 Tokio（示例使用 `#[tokio::main]`）
-- Zenoh 使用默认配置（`Node::new(NodeOptions::new()).await?`）；若需连接外部 router，在 `NodeOptions::config(...)` 中设置
+- 先 `init(InitOptions::new()).await?`（或 `init(InitOptions::new().config(...))`），再 `Node::new(...)`；Zenoh 配置在 `InitOptions` 中设置
 
 ## 示例列表
 

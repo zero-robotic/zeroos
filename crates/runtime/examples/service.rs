@@ -8,10 +8,11 @@
 //! In another terminal, call it with: `cargo run -p zos-runtime --example client -- --remote`
 
 use zos_msg::{Twist, Vector2};
-use zos_runtime::{Node, NodeOptions, RuntimeError};
+use zos_runtime::{init, InitOptions, Node, NodeOptions, RuntimeError};
 
 #[tokio::main]
 async fn main() -> Result<(), RuntimeError> {
+    init(InitOptions::new()).await?;
     let mut node = Node::new(NodeOptions::new().name("server").namespace("/demo")).await?;
 
     node.create_service_builder::<Twist, Vector2>("scale")

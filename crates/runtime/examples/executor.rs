@@ -24,10 +24,11 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
-use zos_runtime::{Executor, ExecutorOptions, Node, NodeOptions, RuntimeError};
+use zos_runtime::{init, InitOptions, Executor, ExecutorOptions, Node, NodeOptions, RuntimeError};
 
 #[tokio::main]
 async fn main() -> Result<(), RuntimeError> {
+    init(InitOptions::new()).await?;
     let direct = env::args().any(|a| a == "--direct");
     let dedicated = env::args().any(|a| a == "--dedicated");
 

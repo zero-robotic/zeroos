@@ -13,14 +13,30 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 
 应用代码需要 Tokio 运行时（`#[tokio::main]`）。
 
+## 初始化
+
+进程内先调用一次 [`init`](src/context.rs) 打开全局 Zenoh session，再创建任意个 [`Node`](src/node.rs)（共享同一 session，类似 ROS 2 `rclcpp::init`）：
+
+```rust
+use zos_runtime::{init, InitOptions, RuntimeError};
+
+#[tokio::main]
+async fn main() -> Result<(), RuntimeError> {
+    init(InitOptions::new()).await?;
+    // 或 init(InitOptions::new().config(my_zenoh_config)).await?;
+    Ok(())
+}
+```
+
 ## 快速开始
 
 ```rust
 use zos_msg::Twist;
-use zos_runtime::{Node, NodeOptions, RuntimeError};
+use zos_runtime::{init, InitOptions, Node, NodeOptions, RuntimeError};
 
 #[tokio::main]
 async fn main() -> Result<(), RuntimeError> {
+    init(InitOptions::new()).await?;
     let mut node = Node::new(NodeOptions::new()).await?;
 
     node.create_subscriber_builder::<Twist>("cmd_vel")
@@ -38,6 +54,7 @@ async fn main() -> Result<(), RuntimeError> {
 带 **namespace** 的节点（与 ROS 2 `__ns` 一致）：
 
 ```rust
+init(InitOptions::new()).await?;
 let mut node = Node::new(
     NodeOptions::new()
         .name("server")
@@ -53,8 +70,10 @@ node.create_service_builder::<Req, Resp>("scale")
 
 | 类型 | ROS 2 对应 | 说明 |
 |------|------------|------|
-| [`Node`](src/node.rs) | `rclcpp::Node` | Zenoh session、创建端点、`spin()` |
-| [`NodeOptions`](src/node.rs) | node 选项 | `name`、`namespace`（默认 `/`）、`config` |
+| [`init`](src/context.rs) | `rclcpp::init` | 全局 Zenoh session，每进程一次 |
+| [`InitOptions`](src/context.rs) | init 选项 | Zenoh `config` |
+| [`Node`](src/node.rs) | `rclcpp::Node` | 创建端点、`spin()`（复用全局 session） |
+| [`NodeOptions`](src/node.rs) | node 选项 | `name`、`namespace`（默认 `/`）、`executor` |
 | [`Publisher`](src/publisher.rs) | `Publisher` | 话题发布 |
 | [`Subscriber`](src/subscriber.rs) | `Subscription` | 话题订阅，可注册进 executor |
 | [`Service`](src/service.rs) | `Service` | 请求/响应服务端 |
@@ -79,6 +98,7 @@ node.create_service_builder::<Req, Resp>("scale")
 在创建节点时通过 [`ExecutorOptions`](src/executor.rs) 配置，统一用 `node.spin().await`：
 
 ```rust
+init(InitOptions::new()).await?;
 // 使用 #[tokio::main] 的线程池（默认）
 Node::new(NodeOptions::new()).await?;
 
