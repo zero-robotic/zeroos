@@ -31,6 +31,12 @@ jobs:
       - name: build examples
         run: cargo build -p zos-runtime --examples
 
+      - name: test simulation (kinematics)
+        run: cargo test -p zos-simulation --no-default-features
+
+      - name: build simulation (headless)
+        run: cargo build -p zos-simulation --no-default-features
+
       # `client` exits after five RPCs; other examples block in spin() and are compile-only above.
       - name: run client example (smoke)
         run: timeout 120 cargo run -p zos-runtime --example client

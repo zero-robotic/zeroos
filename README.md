@@ -14,7 +14,7 @@
 | **导航（Navigation）** | 未开始 | 路径规划与运动控制 |
 | **感知（Perception）** | 未开始 | 传感器与场景理解 |
 | **Agent** | 未开始 | 任务编排与决策 |
-| **仿真** | 脚手架 | [`crates/simulation`](crates/simulation/) |
+| **仿真** | 在练 | [`zos-simulation`](crates/simulation/)（MuJoCo 差分轮） |
 
 ## 仓库结构
 
@@ -31,7 +31,7 @@
 
 - Rust toolchain（edition 2024）
 - **protoc**（编译 `zos-msg` 的 `.proto`）：macOS `brew install protobuf`，Debian/Ubuntu `sudo apt-get install protobuf-compiler`
-- 仿真：Python + MuJoCo，见 [`crates/simulation/README.md`](crates/simulation/README.md)
+- 仿真：MuJoCo + `mujoco-rs`，见 [`crates/simulation/README.md`](crates/simulation/README.md)
 
 ## 构建
 

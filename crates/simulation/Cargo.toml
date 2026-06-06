@@ -1,0 +1,21 @@
+[package]
+name = "zos-simulation"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "MuJoCo differential-drive simulation for ZeroOS"
+publish = false
+
+[features]
+default = ["viewer"]
+viewer = ["dep:mujoco-rs", "mujoco-rs/viewer", "mujoco-rs/viewer-ui"]
+# Linux / Windows: enable with MUJOCO_DOWNLOAD_DIR set (see README).
+auto-mujoco = ["mujoco-rs/auto-download-mujoco"]
+
+[[bin]]
+name = "zos-simulation"
+required-features = ["viewer"]
+
+[dependencies]
+mujoco-rs = { version = "2.3.5", default-features = false, optional = true }
+

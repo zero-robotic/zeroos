@@ -1,0 +1,74 @@
+<!-- Differential-drive mobile base (+X forward, +Y left, +Z up). Included by scene.xml. -->
+<mujoco>
+  <compiler angle="degree"/>
+
+  <default>
+    <joint damping="0.2"/>
+    <geom friction="1.2 0.02 0.002" condim="3"/>
+  </default>
+
+  <worldbody>
+    <body name="base_link" pos="0 0 0.12">
+      <!-- Planar base: world x/y translation + yaw. -->
+      <joint name="slide_x" type="slide" axis="1 0 0"/>
+      <joint name="slide_y" type="slide" axis="0 1 0"/>
+      <joint name="yaw" type="hinge" axis="0 0 1"/>
+
+      <geom name="chassis" type="box" size="0.25 0.2 0.05" mass="8" rgba="0.15 0.45 0.85 1"/>
+      <!-- Asymmetric cues: orange front / dark rear -->
+      <geom name="front_bumper" type="box" pos="0.24 0 0" size="0.02 0.18 0.04"
+        rgba="1 0.45 0.1 1" contype="0" conaffinity="0"/>
+      <geom name="rear_bumper" type="box" pos="-0.24 0 0" size="0.02 0.18 0.04"
+        rgba="0.2 0.2 0.2 1" contype="0" conaffinity="0"/>
+      <geom name="front_light" type="sphere" pos="0.23 0 0.02" size="0.015"
+        rgba="0.2 0.9 0.3 1" contype="0" conaffinity="0"/>
+      <geom name="rear_light" type="sphere" pos="-0.23 0 0.02" size="0.015"
+        rgba="0.9 0.15 0.15 1" contype="0" conaffinity="0"/>
+
+      <site name="imu_link" pos="0 0 0" size="0.01"/>
+
+      <body name="lidar_link" pos="0 0 0.09">
+        <geom name="lidar_mast" type="cylinder" size="0.015 0.03" rgba="0.35 0.35 0.38 1"
+          contype="0" conaffinity="0"/>
+        <geom name="lidar_head" type="cylinder" size="0.04 0.015" pos="0 0 0.04"
+          rgba="0.1 0.1 0.12 1" contype="0" conaffinity="0"/>
+        <site name="lidar" pos="0 0 0.04" size="0.01"/>
+      </body>
+
+      <body name="camera_link" pos="0.2 0 0.03">
+        <geom name="camera_housing" type="box" size="0.025 0.035 0.02" rgba="0.15 0.15 0.18 1"
+          contype="0" conaffinity="0"/>
+        <!-- Looks along body +X (forward). -->
+        <camera name="front_camera" pos="0.02 0 0" xyaxes="0 -1 0 0 0 1" fovy="70"/>
+      </body>
+
+      <body name="left_wheel" pos="0 0.16 -0.07">
+        <joint name="left_wheel_joint" type="hinge" axis="0 1 0"/>
+        <geom name="left_wheel_geom" type="cylinder" size="0.05 0.02" mass="0.5"
+          quat="0.707107 0.707107 0 0" contype="0" conaffinity="0" rgba="0.15 0.15 0.15 1"/>
+      </body>
+
+      <body name="right_wheel" pos="0 -0.16 -0.07">
+        <joint name="right_wheel_joint" type="hinge" axis="0 1 0"/>
+        <geom name="right_wheel_geom" type="cylinder" size="0.05 0.02" mass="0.5"
+          quat="0.707107 0.707107 0 0" contype="0" conaffinity="0" rgba="0.15 0.15 0.15 1"/>
+      </body>
+
+      <body name="caster" pos="-0.22 0 -0.09">
+        <geom name="caster_geom" type="sphere" size="0.03" mass="0.1" contype="0" conaffinity="0"
+          rgba="0.5 0.5 0.5 1"/>
+      </body>
+    </body>
+  </worldbody>
+
+  <actuator>
+    <velocity name="drive_x" joint="slide_x" kv="80" ctrlrange="-2 2"/>
+    <velocity name="drive_y" joint="slide_y" kv="80" ctrlrange="-2 2"/>
+    <velocity name="drive_yaw" joint="yaw" kv="40" ctrlrange="-3 3"/>
+  </actuator>
+
+  <sensor>
+    <accelerometer name="imu_accel" site="imu_link"/>
+    <gyro name="imu_gyro" site="imu_link"/>
+  </sensor>
+</mujoco>

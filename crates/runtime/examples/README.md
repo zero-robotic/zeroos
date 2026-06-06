@@ -54,4 +54,4 @@ cargo build -p zos-runtime --examples
 - `executor` 演示 `ExecutorOptions` 的两种线程模型；加 `--dedicated` 切换专用线程池。
 - `service` 在 namespace `/demo` 上注册 `scale`（全名 `/demo/scale`）；需另开终端运行 `client -- --remote`。
 - `client` 用绝对名 `create_client("/demo/scale")` 调用（与 ROS 2 一致，不受 caller 的 namespace 影响）；默认模式在进程内启动同 namespace 的服务端。
-- MuJoCo / Unitree Go2 仿真见 [`../simulation/README.md`](../simulation/README.md)（Python，与本目录 Rust 示例分开）。
+- MuJoCo 差分轮仿真见 [`../simulation/README.md`](../simulation/README.md)（`cargo run -p zos-simulation`）。
