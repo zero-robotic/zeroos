@@ -1,6 +1,20 @@
 # zos-runtime
 
-ZeroOS 运行时：提供与 ROS 2 相近的 **Node**、发布/订阅、**Service** / **Client**、定时器与执行器。消息类型来自 [`zos-msg`](../msg/)（Protobuf）。
+[ZeroOS](https://github.com/zero-robotic/zeroos) 通信运行时：**试验性**实现，用于摸索 ROS 2 风格的节点与中间件抽象，**非生产可用**。
+
+提供 **Node**、发布/订阅、**Service** / **Client**、定时器与执行器；消息类型来自 [`zos-msg`](../msg/)（Protobuf）。API、分层与 backend 选型均可能随练习推进而调整，**不保证向后兼容**。
+
+## 项目状态
+
+| 项 | 说明 |
+|----|------|
+| **定位** | 个人练习 / 技术验证，非正式发布的产品级 runtime |
+| **成熟度** | 可跑通示例与基础 pub/sub、service；缺 Parameter、Lifecycle 等 ROS 能力 |
+| **稳定性** | 接口与模块划分可能重构；升级前请阅读 commit / PR |
+| **backend** | 仅 [Zenoh](https://zenoh.io/)；`mw` trait 层为后续换 backend 预留，尚未验证多 backend 并存 |
+| **测试** | 单元测试以 namespace 解析为主；集成与压力测试不足 |
+
+若用于学习或本地联调可参考下文；若用于生产或对外交付，请自行评估风险。
 
 ## 架构分层
 
@@ -235,6 +249,13 @@ cargo test -p zos-runtime
 
 当前单元测试覆盖 namespace / 名称解析逻辑（`node` 模块）。
 
-## 规划
+## 规划（试验方向，非承诺）
 
-`Parameter`、`Logger`、`Lifecycle` 等见 [`src/lib.rs`](src/lib.rs) 顶部说明。
+以下为练习时可能探索的方向，**不保证实现或时间表**：
+
+- `Parameter`、`Logger`、`Lifecycle`（见 [`src/lib.rs`](src/lib.rs) 顶部注释）
+- 同进程 InProcess backend（绕过 Zenoh，降低延迟）
+- 与仿真 / viz 的 Runtime 联调（`cmd_vel`、里程计、激光等）
+- QoS 与跨进程传输的更多验证
+
+欢迎 issue / PR，但请接受当前仓库以**个人摸索**为主、合并节奏与标准随练习变化。
