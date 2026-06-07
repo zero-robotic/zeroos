@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package zos.geometry;
+
+import "geometry_msgs/point.proto";
+import "geometry_msgs/quaternion.proto";
+
+// Pose in free space, composed of position and orientation.
+message Pose {
+  Point position = 1;
+  Quaternion orientation = 2;
+}

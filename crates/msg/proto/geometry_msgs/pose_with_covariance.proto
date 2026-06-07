@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package zos.geometry;
+
+import "geometry_msgs/pose.proto";
+
+// Pose in free space with uncertainty.
+message PoseWithCovariance {
+  Pose pose = 1;
+
+  // Row-major 6x6 covariance matrix (length 36).
+  // Orientation uses fixed-axis representation; parameters in order:
+  // x, y, z, rotation about X, rotation about Y, rotation about Z.
+  repeated double covariance = 2;
+}
