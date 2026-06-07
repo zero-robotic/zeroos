@@ -4,6 +4,8 @@ members = [
     "crates/msg",
     "crates/map",
     "crates/zos",
+    "crates/simulation",
+    "crates/viz",
 ]
 resolver = "2"
 
@@ -24,3 +26,8 @@ zenoh = "1.9.0"
 zos-runtime = { path = "crates/runtime" }
 zos-msg = { path = "crates/msg" }
 zos-map = { path = "crates/map" }
+zos-viz = { path = "crates/viz" }
+
+# macOS MuJoCo viewer needs glutin#1740 (not in crates.io 0.32.3 yet).
+[patch.crates-io]
+glutin = { git = "https://github.com/kalzoo/glutin", rev = "0aab9ae61981dae86ea897fc53001f345f656ada" }

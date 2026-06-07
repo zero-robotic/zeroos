@@ -1,6 +1,103 @@
 # zos-runtime
 
-基于 [Zenoh](https://zenoh.io/) 的 ZeroOS 运行时：提供与 ROS 2 相近的 **Node**、发布/订阅、**Service** / **Client**、定时器与执行器。消息类型来自 [`zos-msg`](../msg/)（Protobuf）。
+ZeroOS 运行时：提供与 ROS 2 相近的 **Node**、发布/订阅、**Service** / **Client**、定时器与执行器。消息类型来自 [`zos-msg`](../msg/)（Protobuf）。
+
+## 架构分层
+
+`zos-runtime` 在**同一 crate** 内分为三层，自上而下依赖，下层不感知 ROS 语义：
+
+```mermaid
+flowchart TB
+    subgraph app["应用语义层"]
+        Node["Node / Executor / Timer"]
+        Pub["Publisher / Subscriber"]
+        Svc["Service / Client"]
+        Codec["codec（Protobuf）"]
+    end
+
+    subgraph ctx["初始化层"]
+        Context["context：init / session / backend"]
+    end
+
+    subgraph mw["中间件抽象层 mw"]
+        Traits["traits：Session / Publisher / Subscriber / …"]
+        QoS["qos（与 backend 无关）"]
+    end
+
+    subgraph backend["后端实现（私有）"]
+        Zenoh["mw::zenoh"]
+    end
+
+    Node --> Pub
+    Node --> Svc
+    Pub --> Codec
+    Svc --> Codec
+    Pub --> Context
+    Svc --> Context
+    Context --> Traits
+    Traits --> Zenoh
+    QoS --> Traits
+    QoS --> Pub
+```
+
+### 各层职责
+
+| 层 | 目录 | 对外可见 | 职责 |
+|----|------|----------|------|
+| **应用语义** | `node`、`publisher`、`subscriber`、`service`、`client`、`executor`、`timer`、`codec` | 是（crate 公共 API） | ROS 2 风格 Node / 端点 / Executor；`zos-msg` Protobuf 编解码 |
+| **初始化** | [`context`](src/context.rs) | 是 | 进程级 `init`、[`MiddlewareBackend`](src/context.rs) 选择、全局 `Arc<dyn Session>` |
+| **中间件抽象** | [`mw`](src/mw/) | 部分（trait 与 QoS；`zenoh` 子模块私有） | 与传输无关的 `Session` / 端点 trait、[`MwError`](src/mw/error.rs) |
+| **后端实现** | [`mw::zenoh`](src/mw/zenoh/) | 否（`pub(crate)`） | [Zenoh](https://zenoh.io/) 对 trait 的具体实现；仅 [`context`](src/context.rs) 调用 `open_default` / `open_from_file` |
+
+默认 backend 为 **Zenoh**。应用代码只调用 `init()` 与 `Node`，**不**直接 `use zenoh::…`。
+
+### 目录结构
+
+```
+src/
+├── context.rs          # 唯一选择 backend、持有全局 Session
+├── codec.rs            # zos-msg Protobuf encode / decode
+├── node.rs             # Node、namespace、resolve_name
+├── publisher.rs        # 类型化 Publisher（T: Message）
+├── subscriber.rs       # 类型化 Subscriber + Runnable
+├── service.rs          # Service + Runnable
+├── client.rs           # Client（同步 call）
+├── executor.rs         # 并发驱动 Runnable
+├── timer.rs
+├── qos.rs              # 对 mw::qos 的 re-export 门面
+└── mw/
+    ├── traits.rs       # Session, Publisher, Subscriber, Querier, Queryable
+    ├── qos.rs          # PublishQos / SubscribeQos（无 Zenoh 类型）
+    ├── error.rs
+    └── zenoh/          # pub(crate)：session, publisher, subscriber, …
+```
+
+### 数据路径
+
+**发布 / 订阅**（以 `Twist` 为例）：
+
+1. `Publisher::publish(&msg)` → [`codec::encode`](src/codec.rs) → `Vec<u8>`
+2. `context::session()` → `Arc<dyn Session>` → `declare_publisher` → `Box<dyn Publisher>`
+3. `Publisher::put(bytes)` → 后端（Zenoh `put`）
+4. 对端 `Subscriber::run` → `recv()` → `Vec<u8>` → `codec::decode` → 用户回调
+
+**Service / Client**：
+
+1. `Client::call`：encode 请求 → `Querier::get` → decode 响应
+2. `Service::run`：`Queryable::recv` → `IncomingQuery` → handler → `query.respond`
+
+中间件 trait 只传递 **`Vec<u8>`**；消息类型与 Protobuf 留在应用语义层。
+
+### 封装约定
+
+- **Node 与端点** 持有 `Arc<dyn Session>` 或 `Box<dyn Publisher / Subscriber / …>`，字段类型不出现 `zenoh::Session`。
+- **`mw::zenoh`** 为 `pub(crate) mod`，库外 crate 无法引用 Zenoh 实现细节。
+- **Backend 接线** 集中在 `context::open_backend`；新增 backend 时扩展 [`MiddlewareBackend`](src/context.rs) 并在该函数 `match` 分支挂载。
+- **QoS** 定义在 `mw::qos`（`MessagePriority`、`Reliability`、`SubscriptionOrigin` 等）；`qos.rs` 仅 re-export，Zenoh 映射在 `mw::zenoh::qos`。
+
+### 同进程投递
+
+多个 `Node` 共享 [`init`](src/context.rs) 打开的**同一** `Session` 时，Zenoh 在 session 内做 topic 匹配并投递到订阅方队列（session-local），不经网卡。详见 Zenoh `Locality` / [`SubscribeQos::origin`](src/mw/qos.rs)。
 
 ## 依赖
 
@@ -15,15 +112,16 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 
 ## 初始化
 
-进程内先调用一次 [`init`](src/context.rs) 打开全局 Zenoh session，再创建任意个 [`Node`](src/node.rs)（共享同一 session，类似 ROS 2 `rclcpp::init`）：
+进程内先调用一次 [`init`](src/context.rs) 打开全局中间件 session，再创建任意个 [`Node`](src/node.rs)（共享同一 session，类似 ROS 2 `rclcpp::init`）：
 
 ```rust
-use zos_runtime::{init, init_from_file, RuntimeError};
+use zos_runtime::{init, init_from_file, init_with, MiddlewareBackend, RuntimeError};
 
 #[tokio::main]
 async fn main() -> Result<(), RuntimeError> {
     init().await?;
-    // 或 init_from_file("zenoh.json5").await?;
+    // 或 init_with(MiddlewareBackend::Zenoh).await?;
+    // 或 init_from_file("zenoh.json5").await?;  // Zenoh JSON5 配置
     Ok(())
 }
 ```
@@ -71,7 +169,7 @@ node.create_service_builder::<Req, Resp>("scale")
 |------|------------|------|
 | [`init`](src/context.rs) | `rclcpp::init` | 默认配置，每进程一次 |
 | [`init_from_file`](src/context.rs) | 带配置 init | JSON5 配置文件路径 |
-| [`session`](src/context.rs) | — | 全局 session（[`init`](src/context.rs) 后按需 clone） |
+| [`session`](src/context.rs) | — | 全局 `Arc<dyn Session>`（[`init`](src/context.rs) 后按需 clone） |
 | [`Node`](src/node.rs) | `rclcpp::Node` | 创建端点、收集 runnable |
 | [`NodeOptions`](src/node.rs) | node 选项 | `name`、`namespace`（默认 `/`） |
 | [`Publisher`](src/publisher.rs) | `Publisher` | 话题发布 |

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use thiserror::Error;
+use crate::mw::MwError;
 
 #[derive(Debug, Error)]
 pub enum RuntimeError {
@@ -22,5 +23,11 @@ impl From<String> for RuntimeError {
 impl From<&str> for RuntimeError {
     fn from(value: &str) -> Self {
         Self::Message(value.to_owned())
+    }
+}
+
+impl From<MwError> for RuntimeError {
+    fn from(value: MwError) -> Self {
+        Self::Message(value.to_string())
     }
 }

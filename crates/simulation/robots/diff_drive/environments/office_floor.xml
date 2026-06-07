@@ -1,0 +1,126 @@
+<!-- Open-plan office ~20×16 m. -->
+<mujoco>
+  <default>
+    <geom friction="1.0 0.005 0.0001" condim="3"/>
+  </default>
+
+  <asset>
+    <texture type="2d" name="carpet_tex" builtin="checker" mark="none"
+      rgb1="0.58 0.56 0.54" rgb2="0.54 0.52 0.50" width="256" height="256"/>
+    <material name="carpet" texture="carpet_tex" texuniform="true" texrepeat="14 12" reflectance="0.08"/>
+    <material name="wall" rgba="0.93 0.91 0.87 1" reflectance="0.04"/>
+    <material name="baseboard" rgba="0.72 0.70 0.66 1"/>
+    <material name="window_glass" rgba="0.72 0.82 0.92 0.35" reflectance="0.25"/>
+    <material name="window_frame" rgba="0.78 0.78 0.80 1"/>
+    <material name="door_frame" rgba="0.65 0.63 0.60 1"/>
+    <material name="oak" rgba="0.52 0.36 0.22 1" reflectance="0.12"/>
+    <material name="walnut" rgba="0.38 0.26 0.16 1" reflectance="0.10"/>
+    <material name="metal_dark" rgba="0.28 0.29 0.31 1" reflectance="0.35"/>
+    <material name="metal_light" rgba="0.55 0.57 0.60 1" reflectance="0.40"/>
+    <material name="fabric_gray" rgba="0.42 0.44 0.48 1" reflectance="0.06"/>
+    <material name="fabric_blue" rgba="0.30 0.38 0.52 1" reflectance="0.06"/>
+    <material name="partition_low" rgba="0.78 0.80 0.82 1" reflectance="0.08"/>
+    <material name="partition_glass" rgba="0.75 0.82 0.88 0.25" reflectance="0.30"/>
+    <material name="plant" rgba="0.22 0.48 0.28 1"/>
+    <material name="plant_pot" rgba="0.55 0.42 0.32 1"/>
+    <material name="screen" rgba="0.08 0.10 0.12 1" reflectance="0.6"/>
+  </asset>
+
+  <worldbody>
+    <light pos="0 0 2.6" dir="0 0 -1" directional="false" diffuse="0.75 0.75 0.72" castshadow="false"/>
+    <light pos="-5 3 2.6" dir="0 0 -1" directional="false" diffuse="0.65 0.65 0.62" castshadow="false"/>
+    <light pos="5 -3 2.6" dir="0 0 -1" directional="false" diffuse="0.65 0.65 0.62" castshadow="false"/>
+    <light pos="0 0 4" dir="0.1 0.05 -1" directional="true" diffuse="0.35 0.35 0.38"/>
+
+    <geom name="office_floor" type="plane" size="12 10 0.1" material="carpet"/>
+
+    <!-- Perimeter -->
+    <geom name="wall_south_w" type="box" pos="-6 -7.92 1.35" size="4 0.08 1.35" material="wall"/>
+    <geom name="wall_south_e" type="box" pos="5.5 -7.92 1.35" size="4.5 0.08 1.35" material="wall"/>
+    <geom name="door_frame_s" type="box" pos="-1.5 -7.85 1.05" size="1.05 0.04 1.05" material="door_frame" contype="0" conaffinity="0"/>
+    <geom name="wall_north" type="box" pos="0 7.92 1.35" size="10 0.08 1.35" material="wall"/>
+    <geom name="wall_west" type="box" pos="-9.92 0 1.35" size="0.08 8 1.35" material="wall"/>
+    <geom name="wall_east" type="box" pos="9.92 0 1.35" size="0.08 8 1.35" material="wall"/>
+    <geom name="base_s" type="box" pos="0 -7.85 0.08" size="9.8 0.02 0.08" material="baseboard" contype="0" conaffinity="0"/>
+    <geom name="base_n" type="box" pos="0 7.85 0.08" size="9.8 0.02 0.08" material="baseboard" contype="0" conaffinity="0"/>
+
+    <geom name="win_n_1" type="box" pos="-5 7.84 1.5" size="2.2 0.03 0.9" material="window_glass" contype="0" conaffinity="0"/>
+    <geom name="win_n_2" type="box" pos="0 7.84 1.5" size="2.5 0.03 0.9" material="window_glass" contype="0" conaffinity="0"/>
+    <geom name="win_n_3" type="box" pos="5 7.84 1.5" size="2.2 0.03 0.9" material="window_glass" contype="0" conaffinity="0"/>
+    <geom name="win_n_frame" type="box" pos="0 7.80 1.5" size="9.5 0.04 0.95" material="window_frame" contype="0" conaffinity="0"/>
+
+    <!-- Meeting room (north, y>3) -->
+    <geom name="meet_wall_s" type="box" pos="-1 3.2 1.35" size="4.0 0.06 1.35" material="wall"/>
+    <geom name="meet_wall_e" type="box" pos="1.5 5.5 1.35" size="0.06 1.5 1.35" material="wall"/>
+    <geom name="meet_door" type="box" pos="-0.2 3.2 1.0" size="1.0 0.04 1.0" material="partition_glass" contype="0" conaffinity="0"/>
+    <body name="meeting_room" pos="-1 6.0 0">
+      <geom name="meet_table" type="box" pos="0 0 0.38" size="1.4 0.75 0.06" material="walnut"/>
+      <geom name="meet_chair_1_seat" type="box" pos="-1.8 0 0.24" size="0.24 0.24 0.06" material="fabric_gray"/>
+      <geom name="meet_chair_2_seat" type="box" pos="1.8 0 0.24" size="0.24 0.24 0.06" material="fabric_gray"/>
+      <geom name="meet_whiteboard" type="box" pos="0 2.0 1.0" size="1.2 0.03 0.7" rgba="0.95 0.96 0.94 1" contype="0" conaffinity="0"/>
+    </body>
+
+    <!-- Manager office (north-east) -->
+    <geom name="mgr_wall_s" type="box" pos="6 3.2 1.35" size="3.5 0.06 1.35" material="wall"/>
+    <geom name="mgr_wall_w" type="box" pos="4.5 5.5 1.35" size="0.06 1.2 1.35" material="wall"/>
+    <body name="mgr_office" pos="7 6.0 0">
+      <geom name="mgr_desk_top" type="box" pos="0 0 0.38" size="1.0 0.65 0.03" material="oak"/>
+      <geom name="mgr_bookcase" type="box" pos="1.2 0.6 0.95" size="0.30 0.9 0.95" material="metal_dark"/>
+    </body>
+
+    <!-- South workstations -->
+    <body name="ws_row_s" pos="0 -5.0 0">
+      <geom name="desk_1_top" type="box" pos="-6 0 0.36" size="0.75 0.55 0.025" material="oak"/>
+      <geom name="desk_2_top" type="box" pos="-3.5 0 0.36" size="0.75 0.55 0.025" material="oak"/>
+      <geom name="desk_3_top" type="box" pos="-1 0 0.36" size="0.75 0.55 0.025" material="oak"/>
+      <geom name="desk_4_top" type="box" pos="2 0 0.36" size="0.75 0.55 0.025" material="oak"/>
+      <geom name="desk_5_top" type="box" pos="5 0 0.36" size="0.75 0.55 0.025" material="oak"/>
+      <geom name="desk_6_top" type="box" pos="7.5 0 0.36" size="0.75 0.55 0.025" material="oak"/>
+    </body>
+
+    <!-- North workstations (y > 2.2) -->
+    <body name="ws_row_n" pos="0 5.0 0">
+      <geom name="desk_7_top" type="box" pos="-6 0 0.36" size="0.75 0.55 0.025" material="oak"/>
+      <geom name="desk_8_top" type="box" pos="-3.5 0 0.36" size="0.75 0.55 0.025" material="oak"/>
+      <geom name="desk_9_top" type="box" pos="5 0 0.36" size="0.75 0.55 0.025" material="oak"/>
+      <geom name="desk_10_top" type="box" pos="7.5 0 0.36" size="0.75 0.55 0.025" material="oak"/>
+    </body>
+
+    <!-- West lobby -->
+    <body name="reception" pos="-8 -3.5 0">
+      <geom name="recep_main" type="box" pos="0 0 0.48" size="1.4 0.5 0.48" material="walnut"/>
+      <geom name="recep_return" type="box" pos="0.8 -0.6 0.48" size="0.5 0.8 0.48" material="walnut"/>
+    </body>
+    <body name="lounge" pos="-8 3.5 0">
+      <geom name="sofa_base" type="box" pos="0 0 0.22" size="1.4 0.5 0.22" material="fabric_blue"/>
+      <geom name="coffee_table_top" type="box" pos="1.1 0 0.28" size="0.5 0.35 0.025" material="walnut" contype="0" conaffinity="0"/>
+    </body>
+
+    <!-- East storage -->
+    <geom name="storage_wall_n" type="box" pos="8.2 5.0 1.35" size="0.06 2.0 1.35" material="wall"/>
+    <geom name="storage_wall_s" type="box" pos="8.2 -5.0 1.35" size="0.06 2.0 1.35" material="wall"/>
+    <body name="storage" pos="9.0 0 0">
+      <geom name="shelf_a_frame" type="box" pos="0 6 0.95" size="0.55 1.1 0.95" material="metal_dark"/>
+      <geom name="shelf_b_frame" type="box" pos="0 -6 0.95" size="0.55 1.1 0.95" material="metal_dark"/>
+      <geom name="copier_body" type="box" pos="0 -6.5 0.55" size="0.55 0.65 0.55" material="metal_light"/>
+    </body>
+
+    <!-- Columns -->
+    <geom name="column_1" type="cylinder" pos="-3 2.2 1.35" size="0.18 1.35" material="metal_light"/>
+    <geom name="column_2" type="cylinder" pos="3 -2.2 1.35" size="0.18 1.35" material="metal_light"/>
+
+    <body name="plant_a" pos="-8 6 0">
+      <geom name="plant_a_pot" type="cylinder" size="0.18 0.22" material="plant_pot"/>
+      <geom name="plant_a_leaf" type="ellipsoid" pos="0 0 0.55" size="0.28 0.28 0.45" material="plant" contype="0" conaffinity="0"/>
+    </body>
+    <body name="plant_b" pos="8 -7 0">
+      <geom name="plant_b_pot" type="cylinder" size="0.18 0.22" material="plant_pot"/>
+      <geom name="plant_b_leaf" type="ellipsoid" pos="0 0 0.55" size="0.28 0.28 0.45" material="plant" contype="0" conaffinity="0"/>
+    </body>
+
+    <!-- Clutter -->
+    <geom name="box_delivery" type="box" pos="5 1.8 0.18" size="0.28 0.28 0.18" rgba="0.50 0.38 0.26 1"/>
+    <geom name="box_archive" type="box" pos="-5 -2.0 0.16" size="0.24 0.34 0.16" rgba="0.48 0.48 0.52 1"/>
+    <geom name="water_cooler" type="cylinder" pos="6 -2.5 0.55" size="0.18 0.55" rgba="0.85 0.88 0.92 1"/>
+  </worldbody>
+</mujoco>

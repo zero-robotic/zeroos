@@ -4,13 +4,14 @@
 use std::future::Future;
 use std::marker::PhantomData;
 use std::pin::Pin;
+use std::sync::Arc;
 
 use async_trait::async_trait;
-use futures_util::StreamExt;
 use zos_msg::Message;
 
 use crate::codec;
 use crate::context;
+use crate::mw::{Session, SubscribeQos};
 use crate::node::Node;
 use crate::qos::Qos;
 use crate::{Runnable, RuntimeError};
@@ -19,9 +20,9 @@ pub type CallbackFuture = Pin<Box<dyn Future<Output = ()> + Send>>;
 pub type SubscriberCallback<T> = dyn Fn(T) -> CallbackFuture + Send + Sync;
 
 pub struct Subscriber<T> {
-    session: zenoh::Session,
+    session: Arc<dyn Session>,
     topic: String,
-    qos: Qos,
+    qos: SubscribeQos,
     callback: Box<SubscriberCallback<T>>,
 }
 
@@ -70,7 +71,7 @@ where
         Ok(Self {
             session,
             topic: topic.into(),
-            qos,
+            qos: qos.subscribe,
             callback: Box::new(move |msg| Box::pin(callback(msg))),
         })
     }
@@ -112,18 +113,14 @@ where
     T: Message,
 {
     async fn run(&mut self) -> Result<(), RuntimeError> {
-        let builder = self.session.declare_subscriber(self.topic.clone());
-        let subscriber = self
-            .qos
-            .subscribe
-            .apply(builder)
-            .await
-            .map_err(|e| RuntimeError::from(e.to_string()))?;
+        let mut inner = self
+            .session
+            .declare_subscriber(self.topic.clone(), self.qos)
+            .await?;
 
-        let mut stream = subscriber.stream();
-        while let Some(sample) = stream.next().await {
-            if let Ok(payload) = codec::decode::<T>(&sample.payload().to_bytes()) {
-                (self.callback)(payload).await;
+        while let Some(payload) = inner.recv().await? {
+            if let Ok(message) = codec::decode::<T>(&payload) {
+                (self.callback)(message).await;
             }
         }
 
