@@ -1,0 +1,22 @@
+[package]
+name = "zos-viz"
+description = "ZeroOS message visualization over zos-runtime (Zenoh)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[features]
+default = ["viewer"]
+viewer = ["dep:eframe", "dep:egui"]
+
+[[bin]]
+name = "zos-viz"
+required-features = ["viewer"]
+
+[dependencies]
+eframe = { version = "0.33", optional = true }
+egui = { version = "0.33", optional = true }
+tokio = { workspace = true }
+zos-msg = { workspace = true }
+zos-runtime = { workspace = true }

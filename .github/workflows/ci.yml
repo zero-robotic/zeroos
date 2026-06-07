@@ -37,6 +37,12 @@ jobs:
       - name: build simulation (headless)
         run: cargo build -p zos-simulation --no-default-features
 
+      - name: test viz (lib)
+        run: cargo test -p zos-viz --no-default-features
+
+      - name: build viz (headless)
+        run: cargo build -p zos-viz --no-default-features
+
       # `client` exits after five RPCs; other examples block in spin() and are compile-only above.
       - name: run client example (smoke)
         run: timeout 120 cargo run -p zos-runtime --example client

@@ -15,6 +15,7 @@
 | **感知（Perception）** | 未开始 | 传感器与场景理解 |
 | **Agent** | 未开始 | 任务编排与决策 |
 | **仿真** | 在练 | [`zos-simulation`](crates/simulation/)（MuJoCo 差分轮） |
+| **可视化** | 在练 | [`zos-viz`](crates/viz/)（Runtime 话题监控） |
 
 ## 仓库结构
 
@@ -24,6 +25,7 @@
 | `zos-msg` | [`crates/msg`](crates/msg/) | 跨模块消息定义 |
 | `zos-map` | [`crates/map`](crates/map/) | 地图（占位） |
 | `zos` | [`crates/zos`](crates/zos/) | 门面：`runtime` / `msg` / `map` |
+| `zos-viz` | [`crates/viz`](crates/viz/) | 消息可视化 → [README](crates/viz/README.md) |
 
 使用 runtime（构建、示例、API、依赖）请阅读 **[`crates/runtime/README.md`](crates/runtime/README.md)**。
 
