@@ -25,8 +25,9 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
+      # zos-simulation / zos-viz default to viewer (MuJoCo / GUI); test headless below.
       - name: cargo test
-        run: cargo test --workspace
+        run: cargo test --workspace --exclude zos-simulation --exclude zos-viz
 
       - name: build examples
         run: cargo build -p zos-runtime --examples
