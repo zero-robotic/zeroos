@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package zos.geometry;
+
+import "geometry_msgs/pose.proto";
+import "std_msgs/header.proto";
+
+// Pose with reference coordinate frame and timestamp.
+message PoseStamped {
+  zos.std_msgs.Header header = 1;
+  Pose pose = 2;
+}

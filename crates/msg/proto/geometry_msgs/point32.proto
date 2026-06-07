@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package zos.geometry;
+
+// Position of a point in free space (32-bit precision).
+//
+// Prefer Point where possible for interoperability. Point32 uses less space
+// when sending many points at once (e.g. in a point cloud).
+message Point32 {
+  float x = 1;
+  float y = 2;
+  float z = 3;
+}

@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package zos.sensor;
+
+import "std_msgs/header.proto";
+
+// Compressed image.
+//
+// header.stamp should be the image acquisition time.
+// header.frame_id should be the camera optical frame: origin at the optical
+// center, +x right, +y down, +z into the image plane.
+message CompressedImage {
+  zos.std_msgs.Header header = 1;
+
+  // Compression format string; interpretation depends on the image transport.
+  //
+  // compressed_image_transport:
+  //   "ORIG_PIXFMT; CODEC compressed [COMPRESSED_PIXFMT]"
+  //   ORIG_PIXFMT is a sensor_msgs/Image encoding (e.g. rgb8, mono8).
+  //   CODEC is jpeg, png, or tiff.
+  //   COMPRESSED_PIXFMT (optional, color only) is bgr8/rgb8 for jpeg, or
+  //   bgr8/rgb8/bgr16/rgb16 for png.
+  //   If empty or unrecognized, treat as bgr8 or mono8 jpeg by channel count.
+  //
+  // compressed_depth_image_transport:
+  //   "ORIG_PIXFMT; compressedDepth CODEC"
+  //   ORIG_PIXFMT is usually 16UC1 or 32FC1; CODEC is png or rvl.
+  //   If empty or unrecognized, treat as png.
+  string format = 2;
+
+  bytes data = 3; // Compressed image buffer.
+}
