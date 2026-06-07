@@ -11,7 +11,7 @@ import "std_msgs/header.proto";
 // center, +x right, +y down, +z into the image plane. If frame_id conflicts
 // with the associated CameraInfo message, behavior is undefined.
 message Image {
-  zos.std.Header header = 1;
+  zos.std_msgs.Header header = 1;
 
   uint32 height = 2; // Number of rows.
   uint32 width = 3;  // Number of columns.

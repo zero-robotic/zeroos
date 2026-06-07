@@ -10,7 +10,7 @@ import "std_msgs/header.proto";
 //
 // pose is expressed in header.frame_id. twist is expressed in child_frame_id.
 message Odometry {
-  zos.std.Header header = 1;
+  zos.std_msgs.Header header = 1;
 
   // Frame that twist is relative to; pose is relative to header.frame_id.
   string child_frame_id = 2;

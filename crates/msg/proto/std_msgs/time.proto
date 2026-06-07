@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package zos.std;
+package zos.std_msgs;
 
 message Time {
   int32 sec = 1;

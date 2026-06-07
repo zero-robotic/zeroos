@@ -10,7 +10,7 @@ import "std_msgs/header.proto";
 // header.frame_id should be the camera optical frame: origin at the optical
 // center, +x right, +y down, +z into the image plane.
 message CompressedImage {
-  zos.std.Header header = 1;
+  zos.std_msgs.Header header = 1;
 
   // Compression format string; interpretation depends on the image transport.
   //

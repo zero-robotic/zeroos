@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package zos.std;
+package zos.std_msgs;
 
 import "std_msgs/time.proto";
 

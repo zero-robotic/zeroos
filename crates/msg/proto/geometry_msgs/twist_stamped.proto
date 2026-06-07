@@ -7,6 +7,6 @@ import "std_msgs/header.proto";
 
 // Twist with reference coordinate frame and timestamp.
 message TwistStamped {
-  zos.std.Header header = 1;
+  zos.std_msgs.Header header = 1;
   Twist twist = 2;
 }

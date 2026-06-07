@@ -18,7 +18,7 @@ import "std_msgs/header.proto";
 // the associated covariance to -1. Consumers should check for -1 in element 0 and
 // ignore the corresponding estimate.
 message Imu {
-  zos.std.Header header = 1;
+  zos.std_msgs.Header header = 1;
 
   // Estimated orientation; row-major 3x3 covariance about x, y, z axes (length 9).
   zos.geometry.Quaternion orientation = 2;

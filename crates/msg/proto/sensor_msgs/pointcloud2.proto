@@ -11,7 +11,7 @@ import "std_msgs/header.proto";
 // Clouds may be organized 2D (image-like) or 1D (unordered). For unordered
 // clouds, height is 1 and width is the point count.
 message PointCloud2 {
-  zos.std.Header header = 1;
+  zos.std_msgs.Header header = 1;
 
   uint32 height = 2;
   uint32 width = 3;

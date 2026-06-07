@@ -14,9 +14,9 @@ pub mod geometry {
     include!(concat!(env!("OUT_DIR"), "/zos.geometry.rs"));
 }
 
-/// Standard messages (`zos.std` package).
+/// Standard messages (`zos.std_msgs` package).
 pub mod std_msgs {
-    include!(concat!(env!("OUT_DIR"), "/zos.std.rs"));
+    include!(concat!(env!("OUT_DIR"), "/zos.std_msgs.rs"));
 }
 
 /// Sensor messages (`zos.sensor` package).
