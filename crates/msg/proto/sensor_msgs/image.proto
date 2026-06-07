@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package zos.sensor;
+
+import "std_msgs/header.proto";
+
+// Uncompressed image; (0, 0) is at the top-left corner.
+//
+// header.stamp should be the image acquisition time.
+// header.frame_id should be the camera optical frame: origin at the optical
+// center, +x right, +y down, +z into the image plane. If frame_id conflicts
+// with the associated CameraInfo message, behavior is undefined.
+message Image {
+  zos.std.Header header = 1;
+
+  uint32 height = 2; // Number of rows.
+  uint32 width = 3;  // Number of columns.
+
+  // Pixel encoding: channel meaning, ordering, and size (e.g. "rgb8", "mono8").
+  // Valid values are defined in sensor_msgs/image_encodings.hpp.
+  string encoding = 4;
+
+  uint32 is_bigendian = 5; // Non-zero if multi-byte pixel data is big-endian.
+  uint32 step = 6;         // Full row length in bytes.
+  bytes data = 7;          // Pixel data; size is step * height.
+}

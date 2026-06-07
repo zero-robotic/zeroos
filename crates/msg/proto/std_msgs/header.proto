@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package zos.std;
+
+import "std_msgs/time.proto";
+
+message Header {
+  Time stamp = 1;
+  string frame_id = 2;
+}

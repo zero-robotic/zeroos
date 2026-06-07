@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package zos.nav;
+
+import "geometry_msgs/pose_with_covariance.proto";
+import "geometry_msgs/twist_with_covariance.proto";
+import "std_msgs/header.proto";
+
+// Estimate of position and velocity in free space.
+//
+// pose is expressed in header.frame_id. twist is expressed in child_frame_id.
+message Odometry {
+  zos.std.Header header = 1;
+
+  // Frame that twist is relative to; pose is relative to header.frame_id.
+  string child_frame_id = 2;
+
+  // Estimated pose, typically relative to a fixed world frame.
+  zos.geometry.PoseWithCovariance pose = 3;
+
+  // Estimated linear and angular velocity relative to child_frame_id.
+  zos.geometry.TwistWithCovariance twist = 4;
+}
