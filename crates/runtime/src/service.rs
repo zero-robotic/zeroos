@@ -4,12 +4,14 @@
 use std::future::Future;
 use std::marker::PhantomData;
 use std::pin::Pin;
+use std::sync::Arc;
 
 use async_trait::async_trait;
 use zos_msg::Message;
 
 use crate::codec;
 use crate::context;
+use crate::mw::Session;
 use crate::node::Node;
 use crate::{Runnable, RuntimeError};
 
@@ -18,9 +20,9 @@ pub type ServiceHandlerFuture<Resp> =
 pub type ServiceHandler<Req, Resp> =
     dyn Fn(Req) -> ServiceHandlerFuture<Resp> + Send + Sync;
 
-/// Service: handles requests via Zenoh queryable (ROS 2 `rclcpp::Service`).
+/// Service: handles requests via middleware queryable (ROS 2 `rclcpp::Service`).
 pub struct Service<Req, Resp> {
-    _session: zenoh::Session,
+    session: Arc<dyn Session>,
     topic: String,
     handler: std::sync::Arc<ServiceHandler<Req, Resp>>,
 }
@@ -54,7 +56,7 @@ where
     {
         let session = context::session()?;
         Ok(Self {
-            _session: session,
+            session,
             topic: topic.into(),
             handler: std::sync::Arc::new(move |req| Box::pin(handler(req))),
         })
@@ -98,21 +100,11 @@ where
     Resp: Message,
 {
     async fn run(&mut self) -> Result<(), RuntimeError> {
-        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
         let handler = std::sync::Arc::clone(&self.handler);
         let topic = self.topic.clone();
+        let mut queryable = self.session.declare_queryable(topic.clone()).await?;
 
-        self._session
-            .declare_queryable(&topic)
-            .complete(true)
-            .callback(move |query| {
-                let _ = tx.send(query);
-            })
-            .background()
-            .await
-            .map_err(|e| RuntimeError::from(e.to_string()))?;
-
-        while let Some(query) = rx.recv().await {
+        while let Some(query) = queryable.recv().await? {
             let handler = std::sync::Arc::clone(&handler);
             let topic_log = topic.clone();
             tokio::spawn(async move {
@@ -128,26 +120,19 @@ where
 
 async fn handle_query<Req, Resp>(
     handler: std::sync::Arc<ServiceHandler<Req, Resp>>,
-    query: zenoh::query::Query,
+    query: crate::mw::IncomingQuery,
 ) -> Result<(), RuntimeError>
 where
     Req: Message,
     Resp: Message,
 {
-    let request = match query.payload() {
-        Some(payload) => codec::decode::<Req>(&payload.to_bytes())?,
-        None => {
-            return Err(RuntimeError::from("service request payload is empty"));
-        }
-    };
+    if query.payload.is_empty() {
+        return Err(RuntimeError::from("service request payload is empty"));
+    }
 
+    let request = codec::decode::<Req>(&query.payload)?;
     let response = handler(request).await?;
     let payload = codec::encode(&response)?;
-
-    query
-        .reply(query.key_expr(), payload)
-        .await
-        .map_err(|e| RuntimeError::from(e.to_string()))?;
-
+    query.respond(payload).await?;
     Ok(())
 }

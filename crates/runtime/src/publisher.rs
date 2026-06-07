@@ -4,6 +4,7 @@
 use std::marker::PhantomData;
 
 use zos_msg::Message;
+use crate::mw::Publisher as MwPublisher;
 
 use crate::codec;
 use crate::context;
@@ -11,8 +12,7 @@ use crate::qos::Qos;
 use crate::RuntimeError;
 
 pub struct Publisher<T> {
-    _session: zenoh::Session,
-    publisher: zenoh::pubsub::Publisher<'static>,
+    inner: Box<dyn MwPublisher>,
     topic: String,
     _marker: PhantomData<T>,
 }
@@ -46,16 +46,12 @@ where
     pub async fn new_with_qos(topic: impl Into<String>, qos: Qos) -> Result<Self, RuntimeError> {
         let session = context::session()?;
         let topic = topic.into();
-        let builder = session.declare_publisher(topic.clone());
-        let publisher = qos
-            .publish
-            .apply(builder)
-            .await
-            .map_err(|e| RuntimeError::from(e.to_string()))?;
+        let inner = session
+            .declare_publisher(topic.clone(), qos.publish)
+            .await?;
 
         Ok(Self {
-            _session: session,
-            publisher,
+            inner,
             topic,
             _marker: PhantomData,
         })
@@ -64,17 +60,7 @@ where
     /// Serialize and publish a message to the topic.
     pub async fn publish(&self, message: &T) -> Result<(), RuntimeError> {
         let payload = codec::encode(message)?;
-
-        self.publisher
-            .put(payload)
-            .await
-            .map_err(|e| {
-                RuntimeError::from(format!(
-                    "Zenoh put failed on topic {}: {e}",
-                    self.topic
-                ))
-            })?;
-
+        self.inner.put(payload).await?;
         Ok(())
     }
 

@@ -15,7 +15,7 @@ use crate::{Client, Runnable, RuntimeError, Subscriber, Timer};
 ///
 /// Topic/service names are resolved like ROS 2: relative names are prefixed with
 /// [`namespace`](Self::namespace) (default `/`); names starting with `/` are global.
-/// The global session from [`crate::init`] is fetched when endpoints are created.
+/// The global middleware session from [`crate::init`] is fetched when endpoints are created.
 pub struct Node {
     /// Node name (identity only; not prepended to topics).
     pub name: String,
@@ -52,7 +52,7 @@ pub fn resolve_name(namespace: &str, name: &str) -> String {
     }
 }
 
-/// Options for [`Node::new`] (node name, namespace). Zenoh config is set via [`crate::init`].
+/// Options for [`Node::new`] (node name, namespace). Middleware config is set via [`crate::init`].
 #[derive(Debug, Clone)]
 pub struct NodeOptions {
     /// Node name (identity only).

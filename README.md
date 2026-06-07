@@ -21,7 +21,7 @@
 
 | Crate | 目录 | 说明 |
 |-------|------|------|
-| `zos-runtime` | [`crates/runtime`](crates/runtime/) | 通信中间件 → [README](crates/runtime/README.md) |
+| `zos-runtime` | [`crates/runtime`](crates/runtime/) | Node / Executor + `mw` 中间件层 → [README](crates/runtime/README.md) |
 | `zos-msg` | [`crates/msg`](crates/msg/) | 跨模块消息定义 |
 | `zos-map` | [`crates/map`](crates/map/) | 地图（占位） |
 | `zos` | [`crates/zos`](crates/zos/) | 门面：`runtime` / `msg` / `map` |

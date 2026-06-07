@@ -1,6 +1,16 @@
 # zos-runtime
 
-基于 [Zenoh](https://zenoh.io/) 的 ZeroOS 运行时：提供与 ROS 2 相近的 **Node**、发布/订阅、**Service** / **Client**、定时器与执行器。消息类型来自 [`zos-msg`](../msg/)（Protobuf）。
+ZeroOS 运行时：提供与 ROS 2 相近的 **Node**、发布/订阅、**Service** / **Client**、定时器与执行器。消息类型来自 [`zos-msg`](../msg/)（Protobuf）。
+
+模块分层（同 crate 内）：
+
+| 模块 | 说明 |
+|------|------|
+| [`context`](src/context.rs) | 全局 `init`、backend 选择、`session()` |
+| [`mw`](src/mw/) | 中间件抽象（`Session`、`Publisher`、`Subscriber`、QoS） |
+| Node / Executor 等 | ROS 风格应用语义 |
+
+默认 backend 为 [Zenoh](https://zenoh.io/)（在 `context` 内选择，应用代码不直接依赖 Zenoh API）。
 
 ## 依赖
 
@@ -15,15 +25,16 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 
 ## 初始化
 
-进程内先调用一次 [`init`](src/context.rs) 打开全局 Zenoh session，再创建任意个 [`Node`](src/node.rs)（共享同一 session，类似 ROS 2 `rclcpp::init`）：
+进程内先调用一次 [`init`](src/context.rs) 打开全局中间件 session，再创建任意个 [`Node`](src/node.rs)（共享同一 session，类似 ROS 2 `rclcpp::init`）：
 
 ```rust
-use zos_runtime::{init, init_from_file, RuntimeError};
+use zos_runtime::{init, init_from_file, init_with, MiddlewareBackend, RuntimeError};
 
 #[tokio::main]
 async fn main() -> Result<(), RuntimeError> {
     init().await?;
-    // 或 init_from_file("zenoh.json5").await?;
+    // 或 init_with(MiddlewareBackend::Zenoh).await?;
+    // 或 init_from_file("zenoh.json5").await?;  // Zenoh JSON5 配置
     Ok(())
 }
 ```
@@ -71,7 +82,7 @@ node.create_service_builder::<Req, Resp>("scale")
 |------|------------|------|
 | [`init`](src/context.rs) | `rclcpp::init` | 默认配置，每进程一次 |
 | [`init_from_file`](src/context.rs) | 带配置 init | JSON5 配置文件路径 |
-| [`session`](src/context.rs) | — | 全局 session（[`init`](src/context.rs) 后按需 clone） |
+| [`session`](src/context.rs) | — | 全局 `Arc<dyn Session>`（[`init`](src/context.rs) 后按需 clone） |
 | [`Node`](src/node.rs) | `rclcpp::Node` | 创建端点、收集 runnable |
 | [`NodeOptions`](src/node.rs) | node 选项 | `name`、`namespace`（默认 `/`） |
 | [`Publisher`](src/publisher.rs) | `Publisher` | 话题发布 |
